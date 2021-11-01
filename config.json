@@ -1,0 +1,16 @@
+{
+    "BITRATE": "128k",
+    "CONTAINER": ".ogg",
+    "KEEP": true,
+    "COMMONTYPES": [
+        ".flac",
+        ".mp3",
+        ".wav",
+        ".m4a",
+        ".aac",
+        ".webm",
+        ".mp4",
+        ".avi",
+        ".mkv"
+    ]
+}
