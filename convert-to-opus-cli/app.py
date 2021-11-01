@@ -7,6 +7,7 @@ import ffpb
 with open('config.json', 'r') as f:
     config = json.load(f)
 
+
 def convertFolder(PATH):
     os.chdir(PATH)
     if config['KEEP']:

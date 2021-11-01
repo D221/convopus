@@ -21,6 +21,8 @@ python3 convert-to-opus-cli -d /path/to/files
 python3 convert-to-opus-cli -s /path/to/file
 ```
 
+You can customize settings in config.json
+
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
