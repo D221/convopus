@@ -2,6 +2,8 @@
 
 convert-to-opus-cli is a Python CLI program for converting audio files to [opus](https://opus-codec.org/) audio format.
 
+![Demo](https://raw.github.com/D221/convert-to-opus-cli/main/demo/demo.gif)
+
 ## Installation
 
 Must have installed ffmpeg and added to PATH
