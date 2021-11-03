@@ -2,9 +2,9 @@ import argparse
 
 from app import convertFile, convertFolder
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(
-        description='A Python CLI program for converting audio files to opus')
+    description='A Python CLI program for converting audio files to opus')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-d', '--directory',
                        help='Converts whole directory of files')
@@ -14,3 +14,7 @@ if __name__ == '__main__':
         convertFolder(args.directory)
     elif args.single:
         convertFile(args.single)
+
+
+if __name__ == '__main__':
+    main()
