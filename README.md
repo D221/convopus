@@ -24,9 +24,9 @@ pip install -r requirements.txt
 
 ```bash
 python3 convert-to-opus-cli -h # for info
-# Use -d for directory, -s for single file
-python3 convert-to-opus-cli -d /path/to/files
-python3 convert-to-opus-cli -s /path/to/file
+# Use -D for directory, -F for a single file
+python3 convert-to-opus-cli -D /path/to/files
+python3 convert-to-opus-cli -F /path/to/file
 ```
 
 You can customize settings in config.json
