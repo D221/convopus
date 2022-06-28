@@ -2,6 +2,7 @@
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/D221/convert-to-opus-cli?label=Download)](https://github.com/D221/convert-to-opus-cli/releases/latest)
 ![GitHub](https://img.shields.io/github/license/D221/convert-to-opus-cli)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/D221/convert-to-opus-cli/Pylint)
 
 convert-to-opus-cli is a Python CLI program for converting audio files to [opus](https://opus-codec.org/) audio format.
 
