@@ -1,36 +1,40 @@
+'''Main application for converting audio'''
+from encodings import utf_8
 import json
 import os
 import shutil
 
 import ffpb
 
-with open('config.json', 'r') as f:
+with open('config.json', 'r', encoding=utf_8) as f:
     config = json.load(f)
 
 
-def convertFolder(PATH):
+def convert_folder(input_path):
+    '''For converting audio files in a folder'''
     if config['KEEP']:
-        KEEPLOCATION = os.path.join(PATH, 'original')
-        os.makedirs(KEEPLOCATION, exist_ok=True)
-    for FILENAME in os.listdir(PATH):
-        if (FILENAME.endswith(tuple(config['COMMONTYPES']))):
-            WITHOUT_EXT = os.path.splitext(FILENAME)[0]
-            INPUT = "".join([PATH, FILENAME])
-            OUTPUT = "".join([PATH, WITHOUT_EXT, config['CONTAINER']])
-            ffpb.main(argv=['-i', INPUT, '-vn', '-c:a', 'libopus',
-                      '-b:a', config['BITRATE'], '-vbr', 'on', OUTPUT])
+        keep_location = os.path.join(input_path, 'original')
+        os.makedirs(keep_location, exist_ok=True)
+    for file_name in os.listdir(input_path):
+        if file_name.endswith(tuple(config['COMMONTYPES'])):
+            without_ext = os.path.splitext(file_name)[0]
+            input_file = "".join([input_path, file_name])
+            output_file = "".join([input_path, without_ext, config['CONTAINER']])
+            ffpb.main(argv=['-i', input_file, '-vn', '-c:a', 'libopus',
+                      '-b:a', config['BITRATE'], '-vbr', 'on', output_file])
             if config['KEEP']:
-                shutil.move(INPUT, KEEPLOCATION)
+                shutil.move(input_file, keep_location)
             else:
-                os.remove(INPUT)
+                os.remove(input_file)
         else:
             continue
 
 
-def convertFile(FILENAME):
-    WITHOUT_EXT = os.path.splitext(FILENAME)[0]
-    OUTPUT = "".join([WITHOUT_EXT, config['CONTAINER']])
-    ffpb.main(argv=['-i', FILENAME, '-vn', '-c:a', 'libopus',
-              '-b:a', config['BITRATE'], '-vbr', 'on', OUTPUT])
+def convert_file(file_name):
+    '''For converting single audio file'''
+    without_ext = os.path.splitext(file_name)[0]
+    output_file = "".join([without_ext, config['CONTAINER']])
+    ffpb.main(argv=['-i', file_name, '-vn', '-c:a', 'libopus',
+              '-b:a', config['BITRATE'], '-vbr', 'on', output_file])
     if not config['KEEP']:
-        os.remove(FILENAME)
+        os.remove(file_name)

@@ -1,10 +1,13 @@
+'''Initialize program and parse arguments'''
 import argparse
 
 from app import convertFile, convertFolder
 
+
 def main():
+    '''Parse arguments from command line'''
     parser = argparse.ArgumentParser(
-    description='A Python CLI program for converting audio files to opus')
+        description='A Python CLI program for converting audio files to opus')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-D', '--directory',
                        help='Converts whole directory of files')

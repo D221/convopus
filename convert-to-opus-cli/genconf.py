@@ -1,3 +1,5 @@
+'''Generates default config file'''
+from encodings import utf_8
 import json
 
 config = {
@@ -8,5 +10,5 @@ config = {
                     '.aac', '.webm', '.mp4', '.avi', '.mkv')
 }
 
-with open('config.json', 'w') as f:
+with open('config.json', 'w', encoding=utf_8) as f:
     json.dump(config, f, indent=4)
