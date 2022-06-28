@@ -1,5 +1,8 @@
 # convert-to-opus-cli
 
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/D221/convert-to-opus-cli?label=Download)](https://github.com/D221/convert-to-opus-cli/releases/latest)
+![GitHub](https://img.shields.io/github/license/D221/convert-to-opus-cli)
+
 convert-to-opus-cli is a Python CLI program for converting audio files to [opus](https://opus-codec.org/) audio format.
 
 ![Demo](https://raw.github.com/D221/convert-to-opus-cli/main/demo/demo.gif)
