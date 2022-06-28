@@ -1,7 +1,7 @@
 '''Initialize program and parse arguments'''
 import argparse
 
-from app import convertFile, convertFolder
+from app import convert_file, convert_folder
 
 
 def main():
@@ -14,9 +14,9 @@ def main():
     group.add_argument('-F', '--file', help='Converts a single file')
     args = parser.parse_args()
     if args.directory:
-        convertFolder(args.directory)
+        convert_folder(args.directory)
     elif args.file:
-        convertFile(args.file)
+        convert_file(args.file)
 
 
 if __name__ == '__main__':
