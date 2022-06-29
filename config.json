@@ -2,6 +2,7 @@
     "BITRATE": "128k",
     "CONTAINER": ".ogg",
     "KEEP": true,
+    "VBR": "on",
     "COMMONTYPES": [
         ".flac",
         ".mp3",

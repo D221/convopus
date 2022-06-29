@@ -5,6 +5,7 @@ config = {
     "BITRATE": "128k",
     "CONTAINER": ".ogg",
     "KEEP": True,
+    "VBR": 'on',
     "COMMONTYPES": ('.flac', '.mp3', '.wav', '.m4a',
                     '.aac', '.webm', '.mp4', '.avi', '.mkv')
 }
