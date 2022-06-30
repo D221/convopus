@@ -16,7 +16,7 @@ def convert_folder(input_path):
     if config['KEEP']:
         keep_location = os.path.join(input_path, 'original')
         os.makedirs(keep_location, exist_ok=True)
-    for file_name in os.listdir(input_path):
+    for file_name in sorted(os.listdir(input_path)):
         signal.signal(signal.SIGINT, signal_handler)
         if file_name.endswith(tuple(config['COMMONTYPES'])):
             without_ext = os.path.splitext(file_name)[0]
