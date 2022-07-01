@@ -1,14 +1,14 @@
 '''Main application for converting audio.'''
-import json
 import os
 import shutil
 import signal
 import sys
 
+from convopus.genconf import read_config
+
 from ffpb import ffpb
 
-with open('config.json', 'r', encoding="utf_8") as f:
-    config = json.load(f)
+config = read_config()
 
 
 def convert_folder(input_path):
