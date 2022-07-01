@@ -20,6 +20,12 @@ slightly outdated demo:
 Must have installed ffmpeg and added to PATH
 
 ```bash
+pip install -U convopus
+```
+
+## Build
+
+```bash
 git clone https://github.com/D221/convopus
 cd convopus
 pip install .
