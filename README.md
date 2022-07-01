@@ -40,7 +40,7 @@ You can customize settings in **config.json** located in:
 |-|-|
 |Windows|%LocalAppData%\D221\convopus|
 |Linux|~/.config/convopus|
-|macOS|~/Library/Application Support/convopus'|
+|macOS|~/Library/Application Support/convopus|
 
 ## License
 
