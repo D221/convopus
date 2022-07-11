@@ -6,7 +6,7 @@
 
 convopus is a Python CLI program for converting audio files to [opus](https://opus-codec.org/) audio format.
 
-![Demo](demo/demo.gif)
+![Demo](https://raw.githubusercontent.com/D221/convopus/main/demo/demo.gif)
 
 ## Features
 
