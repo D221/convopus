@@ -1,6 +1,7 @@
 '''Generates default config file'''
 import json
 import os
+import sys
 from appdirs import user_config_dir
 
 APP_NAME = "convopus"
@@ -33,3 +34,11 @@ def read_config():
     with open(conf_full_path, 'r', encoding="utf_8") as config_file:
         config_read = json.load(config_file)
         return config_read
+
+
+def print_config():
+    '''Prints config location and it's content.'''
+    print(conf_full_path)
+    with open(conf_full_path, 'r', encoding="utf_8") as config_file:
+        print(config_file.read())
+    sys.exit()
