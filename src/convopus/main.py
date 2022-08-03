@@ -10,10 +10,7 @@ config = read_config()
 
 def main():
     '''Parse arguments from command line'''
-    init_parser = argparse.ArgumentParser(
-        prog="convopus",
-        description='A Python CLI program for converting audio files to opus',
-        add_help=False)
+    init_parser = argparse.ArgumentParser(add_help=False)
     init_parser.add_argument(
         '--config', help='Prints config location and it\'s content', action="store_true")
     init_parser.add_argument(
