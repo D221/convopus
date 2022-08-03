@@ -17,7 +17,7 @@ def main():
     init_parser.add_argument(
         '--config', help='Prints config location and it\'s content', action="store_true")
     init_parser.add_argument(
-        '-v', '--version', action='version', version='%(prog)s 1.3.1')
+        '-v', '--version', action='version', version='%(prog)s 1.3.2')
     options, remainder = init_parser.parse_known_args()
 
     if options.config:
@@ -39,22 +39,16 @@ def main():
             '-dk', '--dont-keep', help='Don\'t Keep original files', action="store_true")
         args = parser.parse_args(remainder)
 
-    # Don't like this logic
-    if args.dont_keep:
-        config_keep = False
-    else:
-        config_keep = config['KEEP']
-
     config_common_types = config['COMMONTYPES']
 
     if os.path.isdir(args.input):
         convert_folder(args.input, args.bitrate, args.container,
-                       config_keep, args.vbr, config_common_types)
+                       args.dont_keep, args.vbr, config_common_types)
     elif os.path.isfile(args.input):
         convert_file(args.input, args.bitrate,
-                     args.container, config_keep, args.vbr)
+                     args.container, args.dont_keep, args.vbr)
     else:
-        print("The path/file is invalid!")
+        print("The path/file " + args.input + " is invalid!")
 
 
 if __name__ == '__main__':
