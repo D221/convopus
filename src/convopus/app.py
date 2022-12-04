@@ -7,9 +7,9 @@ import sys
 from ffpb import ffpb
 
 
-def convert_folder(input_path, prefered_bitrate, file_container, remove_files, vbr, config_common_types):
+def convert_folder(input_path, prefered_bitrate, file_container, remove_files, keep_files, vbr, config_common_types):
     '''For converting audio files in a folder.'''
-    if not remove_files:
+    if (not remove_files) or keep_files:
         keep_location = os.path.join(input_path, 'original')
         os.makedirs(keep_location, exist_ok=True)
 
@@ -22,7 +22,7 @@ def convert_folder(input_path, prefered_bitrate, file_container, remove_files, v
             output_file = os.path.join(input_path, output_file_name)
             ffpb.main(argv=['-i', input_file, '-vn', '-c:a', 'libopus',
                             '-b:a', prefered_bitrate, '-vbr', vbr, output_file])
-            if remove_files:
+            if remove_files and (not keep_files):
                 os.remove(input_file)
             else:
                 shutil.move(input_file, keep_location)
@@ -30,13 +30,13 @@ def convert_folder(input_path, prefered_bitrate, file_container, remove_files, v
             continue
 
 
-def convert_file(file_name, prefered_bitrate, file_container, remove_files, vbr):
+def convert_file(file_name, prefered_bitrate, file_container, remove_files, keep_files, vbr):
     '''For converting single audio file.'''
     without_ext = os.path.splitext(file_name)[0]
     output_file = "".join([without_ext, file_container])
     ffpb.main(argv=['-i', file_name, '-vn', '-c:a', 'libopus',
                     '-b:a', prefered_bitrate, '-vbr', vbr, output_file])
-    if remove_files:
+    if remove_files and (not keep_files):
         os.remove(file_name)
 
 

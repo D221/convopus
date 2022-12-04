@@ -34,16 +34,18 @@ def main():
                             default=config['VBR'], choices=["on", "off"], metavar="on/off")
         parser.add_argument(
             '-dk', '--dont-keep', help='Don\'t Keep original files', action="store_true")
+        parser.add_argument(
+            '-k', '--keep', help='Keep original files', action="store_true")
         args = parser.parse_args(remainder)
 
     config_common_types = config['COMMONTYPES']
 
     if os.path.isdir(args.input):
         convert_folder(args.input, args.bitrate, args.container,
-                       args.dont_keep, args.vbr, config_common_types)
+                       args.dont_keep, args.keep, args.vbr, config_common_types)
     elif os.path.isfile(args.input):
         convert_file(args.input, args.bitrate,
-                     args.container, args.dont_keep, args.vbr)
+                     args.container, args.dont_keep, args.keep, args.vbr)
     else:
         print("The path/file " + args.input + " is invalid!")
 
