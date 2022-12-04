@@ -118,7 +118,7 @@ class ProgressNotifier:
                     dynamic_ncols=True,  # dynamicly adjust progress bar length
                     ncols=0,
                     ascii=os.name == "nt",  # windows cmd has problems with unicode
-                    bar_format='{l_bar}{bar}|[{elapsed}/{remaining}{postfix}]'
+                    bar_format='{desc:<25.25} {percentage:3.0f}%|{bar}|[{elapsed}/{remaining}{postfix}]'
                 )
 
             self.pbar.update(current - self.pbar.n)
