@@ -40,12 +40,18 @@ def main():
 
     config_common_types = config['COMMONTYPES']
 
+    if (config['KEEP'] and not args.dont_keep) or (not config['KEEP'] and args.keep):
+        keep_files = True
+    elif (not config['KEEP'] and not args.keep ) or ( config['KEEP'] and args.dont_keep):
+        keep_files = False
+    else:
+        print("Conflicting paramenters!")
     if os.path.isdir(args.input):
         convert_folder(args.input, args.bitrate, args.container,
-                       args.dont_keep, args.keep, args.vbr, config_common_types)
+                       keep_files, args.vbr, config_common_types)
     elif os.path.isfile(args.input):
         convert_file(args.input, args.bitrate,
-                     args.container, args.dont_keep, args.keep, args.vbr)
+                     args.container, keep_files, args.vbr)
     else:
         print("The path/file " + args.input + " is invalid!")
 
