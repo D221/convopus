@@ -4,7 +4,7 @@ import shutil
 import signal
 import sys
 
-from ffpb import ffpb
+from ffpb_convopus import ffpb
 
 
 def convert_folder(input_path, prefered_bitrate, file_container, keep_files, vbr, config_common_types):
