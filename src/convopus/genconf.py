@@ -11,6 +11,7 @@ config = {
     "CONTAINER": ".ogg",
     "KEEP": True,
     "VBR": 'on',
+    "RECURSIVE": False,
     "COMMONTYPES": ('.flac', '.mp3', '.wav', '.m4a',
                     '.aac', '.webm', '.mp4', '.avi', '.mkv')
 }

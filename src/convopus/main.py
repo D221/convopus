@@ -6,12 +6,16 @@ import sys
 from convopus.app import convert_file, convert_folder
 from convopus.genconf import read_config, print_config
 
+# BETA multithreading / progress bar broken, saving original not ideal
+# from convopus.app_mt import convert_file, convert_folder
+
 # Read config data once
 CONFIG_DATA = read_config()
 COMMON_TYPES = CONFIG_DATA["COMMONTYPES"]
 PREFERRED_BITRATE = CONFIG_DATA["BITRATE"]
 CONTAINER = CONFIG_DATA["CONTAINER"]
 VARIABLY_BIT_RATE = CONFIG_DATA["VBR"]
+RECURSIVE = CONFIG_DATA["RECURSIVE"]
 KEEP_FILES = CONFIG_DATA.get("KEEP", True)
 
 
@@ -34,16 +38,16 @@ def parse_arguments(argv):
     parser.add_argument('input',nargs='?',default=None,help='Input file or directory (optional)')
 
     group = parser.add_argument_group(title="Conversion Options")
+    group.add_argument('-r','--recursive', help='Also convert files in subdirectories', action='store_true', default=RECURSIVE)
     group.add_argument('-c','--container', help='Container for audio files (.ogg, .opus, .oga, .mkv, .webm)',
                         default=CONTAINER)
     group.add_argument('--vbr', help='Variable Bitrate option', choices=['on', 'off'], default=VARIABLY_BIT_RATE)
-    group.add_argument('-b', '--bitrate', default=PREFERRED_BITRATE, help=f'Preferred bitrate for audio files. Default {PREFERRED_BITRATE}. ')
+    group.add_argument('-b', '--bitrate', help=f'Preferred bitrate for audio files', default=PREFERRED_BITRATE)
 
     action_group = parser.add_mutually_exclusive_group(required=False)
     action_group.add_argument('-k','--keep-original-files',action='store_true',help='Keeps original files after conversion')
     action_group.add_argument('-dk','--delete-original-files',action='store_true',help='Delete original files after conversion')
 
-  
     parser.add_argument('--config',help="Prints config location and it\'s content", action='store_true', dest='print_config')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.3.3')
 
@@ -54,10 +58,10 @@ def parse_arguments(argv):
         sys.exit(0) 
     return args
 
-def convert(input_path, bitrate, container, keep_files, vbr, common_types):
+def convert(input_path, bitrate, container, keep_files, vbr, common_types, recursive):
     '''Function that converts audio files into opus format'''
     if os.path.isdir(input_path):
-        convert_folder(input_path, bitrate, container,keep_files,vbr,common_types)
+        convert_folder(input_path, bitrate, container,keep_files,vbr,common_types, recursive)
     elif os.path.isfile(input_path):
         convert_file(input_path, bitrate, container,keep_files, vbr)
     else:
@@ -81,7 +85,7 @@ def main():
     if keep_files is None:
         keep_files = KEEP_FILES
 
-    convert(args.input,args.bitrate,args.container,keep_files, args.vbr,COMMON_TYPES)
+    convert(args.input,args.bitrate,args.container,keep_files, args.vbr,COMMON_TYPES, args.recursive)
 
 
 if __name__ == '__main__':
