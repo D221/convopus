@@ -3,6 +3,7 @@ import os
 import shutil
 import signal
 import sys
+
 from tqdm import tqdm
 
 from ffpb_convopus import ffpb
@@ -20,7 +21,6 @@ def convert_folder(input_path, prefered_bitrate, file_container, keep_files, vbr
         os.makedirs(keep_location, exist_ok=True)
 
     signal.signal(signal.SIGINT, signal_handler)
-
 
     files_to_convert = [
         os.path.join(dirpath, filename)

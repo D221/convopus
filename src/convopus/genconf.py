@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+
 from appdirs import user_config_dir
 
 APP_NAME = "convopus"
@@ -12,6 +13,7 @@ config = {
     "KEEP": True,
     "VBR": 'on',
     "RECURSIVE": False,
+    "MULTI_THREADING": True,
     "COMMONTYPES": ('.flac', '.mp3', '.wav', '.m4a',
                     '.aac', '.webm', '.mp4', '.avi', '.mkv')
 }
@@ -22,16 +24,16 @@ conf_full_path = os.path.join(conf_path, CONF_FILE)
 
 def generate_config():
     '''Generates configuration file.'''
-    if not os.path.exists(conf_full_path):
-        os.makedirs(conf_path, exist_ok=True)
-        with open(conf_full_path, 'w') as config_file:
-            json.dump(config, config_file, indent=4)
+    os.makedirs(conf_path, exist_ok=True)
+    with open(conf_full_path, 'w', encoding="utf-8") as config_file:
+        json.dump(config, config_file, indent=4)
+
 
 def read_config():
     '''Reads configuration file.'''
     if not os.path.isfile(conf_full_path):
         generate_config()
-    with open(conf_full_path, 'r') as config_file:
+    with open(conf_full_path, 'r', encoding="utf-8") as config_file:
         config_read = json.load(config_file)
         return config_read
 
@@ -39,9 +41,10 @@ def read_config():
 def print_config():
     '''Prints config location and it's content.'''
     print(conf_full_path)
-    with open(conf_full_path, 'r') as config_file:
+    with open(conf_full_path, 'r', encoding="utf-8") as config_file:
         print(config_file.read())
         sys.exit()
+
 
 if __name__ == "__main__":
     generate_config()
