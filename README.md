@@ -39,8 +39,6 @@ convopus /path/to/directory
 convopus /path/to/file
 ```
 
-Also you can find windows binary in [Releases](https://github.com/D221/convopus/releases/latest)
-
 You can customize settings in **config.json** located in:
 
 |OS|config.json location|
