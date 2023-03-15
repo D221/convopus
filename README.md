@@ -2,7 +2,7 @@
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/D221/convopus?label=Download)](https://github.com/D221/convopus/releases/latest)
 ![GitHub](https://img.shields.io/github/license/D221/convopus)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/D221/convopus/Pylint)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/D221/convopus/pylint.yml?branch=main)
 
 convopus is a Python CLI program for converting audio files to [opus](https://opus-codec.org/) audio format.
 
