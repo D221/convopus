@@ -11,15 +11,17 @@ convopus is a Python CLI program for converting audio files to [opus](https://op
 ## Features
 
 - Windows / Linux / macOS / Android (via Termux) support
-- Customizable bitrate and more (via config.json)
-- Support of various audio formats / containers
+- Customizable bitrate, vbr and more (via config.json)
+- Support of various input audio formats / containers
+- Fast multi threading converting
+- Recursive conversion
 
 ## Installation
 
 Must have installed ffmpeg and added to PATH
 
 ```bash
-pip install -U convopus
+pip install convopus
 ```
 
 ## Build
