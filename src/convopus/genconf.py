@@ -9,13 +9,13 @@ APP_NAME = "convopus"
 APP_AUTHOR = "D221"
 config = {
     "BITRATE": "128k",
-    "CONTAINER": ".ogg",
+    "CONTAINER": ".opus",
     "KEEP": True,
     "VBR": 'on',
     "RECURSIVE": False,
     "MULTI_THREADING": True,
     "COMMONTYPES": ('.flac', '.mp3', '.wav', '.m4a',
-                    '.aac', '.webm', '.mp4', '.avi', '.mkv')
+                    '.aac', '.webm', '.mp4', '.avi', '.mkv', '.mpc', '.wma')
 }
 conf_path = user_config_dir(APP_NAME, APP_AUTHOR)
 CONF_FILE = 'config.json'
