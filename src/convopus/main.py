@@ -71,7 +71,7 @@ def parse_arguments(argv):
     parser.add_argument('--config', help="Prints config location and it\'s content",
                         action='store_true', dest='print_config')
     parser.add_argument('-v', '--version', action='version',
-                        version='%(prog)s 1.4.0')
+                        version='%(prog)s 1.4.1')
 
     args = parser.parse_args(args=argv)
     # if user wants to see the config, retrieve and display it
@@ -123,9 +123,11 @@ def main():
     # If no flag is specified for multi_threading, use default value from config file
     if multi_threading is None:
         multi_threading = MT
-
-    convert(args.input, args.bitrate, args.container, keep_files,
-            args.vbr, COMMON_TYPES, args.recursive, multi_threading)
+    if len(sys.argv) > 1:
+        convert(args.input, args.bitrate, args.container, keep_files,
+                args.vbr, COMMON_TYPES, args.recursive, multi_threading)
+    else:
+        print("See convopus --help for usage")
 
 
 if __name__ == '__main__':
