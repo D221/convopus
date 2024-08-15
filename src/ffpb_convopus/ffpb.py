@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 # Copyright (c) 2017-2021 Martin Larralde <martin.larralde@ens-paris-saclay.fr>
 # Copyright (c) 2022 D221
@@ -28,14 +27,14 @@
 import os
 import re
 import signal
-import sys
 import subprocess
+import sys
 
 from tqdm import tqdm
 
 
 class ProgressNotifier:
-    '''Displays progress bar for ffmpeg.'''
+    """Displays progress bar for ffmpeg."""
 
     _DURATION_RX = re.compile(b"Duration: (\d{2}):(\d{2}):(\d{2})\.\d{2}")
     _PROGRESS_RX = re.compile(b"time=(\d{2}):(\d{2}):(\d{2})\.\d{2}")
@@ -59,11 +58,11 @@ class ProgressNotifier:
         self.source = None
         self.pbar = None
         self.file = file or sys.stderr
-        self.encoding = 'UTF-8'
+        self.encoding = "UTF-8"
 
     def __call__(self, char, stdin=None):
         if isinstance(char, str):
-            char = char.encode('ascii')
+            char = char.encode("ascii")
         if char in b"\r\n":
             line = self.newline()
             if self.duration is None:
@@ -74,36 +73,35 @@ class ProgressNotifier:
         else:
             self.line_acc.extend(char)
             if self.line_acc[-6:] == bytearray(b"[y/N] "):
-                print(self.line_acc.decode(self.encoding),
-                      end="", file=self.file)
+                print(self.line_acc.decode(self.encoding), end="", file=self.file)
                 self.file.flush()
                 if stdin:
                     stdin.put(input() + "\n")
                 self.newline()
 
     def newline(self):
-        '''Prints new line.'''
+        """Prints new line."""
         line = bytes(self.line_acc)
         self.lines.append(line)
         self.line_acc = bytearray()
         return line
 
     def get_duration(self, line):
-        '''Gets duration from ffmpeg.'''
+        """Gets duration from ffmpeg."""
         search = self._DURATION_RX.search(line)
         if search is not None:
             return self._seconds(*search.groups())
         return None
 
     def get_output(self, line):
-        '''Gets output filename from ffmpeg.'''
+        """Gets output filename from ffmpeg."""
         search = self._OUTPUT_RX.search(line)
         if search is not None:
             return os.path.basename(search.group(1).decode(self.encoding))
         return None
 
     def progress(self, line):
-        '''Displays tqdm progress bar.'''
+        """Displays tqdm progress bar."""
         search = self._PROGRESS_RX.search(line)
         if search is not None:
 
@@ -117,14 +115,14 @@ class ProgressNotifier:
                     total=total,
                     dynamic_ncols=True,  # dynamicly adjust progress bar length
                     ncols=0,
-                    bar_format='{desc:<25.25} {percentage:3.0f}%|{bar}|[{elapsed}/{remaining}{postfix}]'
+                    bar_format="{desc:<25.25} {percentage:3.0f}%|{bar}|[{elapsed}/{remaining}{postfix}]",
                 )
 
             self.pbar.update(current - self.pbar.n)
 
 
 def main(argv=None, stream=sys.stderr):
-    '''Parse ffmpeg input.'''
+    """Parse ffmpeg input."""
     argv = argv or sys.argv[1:]
 
     try:
