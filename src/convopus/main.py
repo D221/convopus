@@ -29,7 +29,6 @@ except KeyError:
     sys.exit(0)
 
 
-# check if ffmpeg is installed
 def check_ffmpeg():
     """Function to check ffmpeg installation"""
     try:
@@ -53,7 +52,7 @@ def parse_arguments(argv):
     )
 
     parser.add_argument(
-        "input", nargs="?", default=None, help="Input file or directory (optional)"
+        "input", nargs="*", default=None, help="Input files or directories (optional)"
     )
 
     group = parser.add_argument_group(title="Conversion Options")
@@ -125,7 +124,6 @@ def parse_arguments(argv):
     parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.4.2")
 
     args = parser.parse_args(args=argv)
-    # if user wants to see the config, retrieve and display it
     if args.print_config:
         print_config()
         sys.exit(0)
@@ -133,7 +131,7 @@ def parse_arguments(argv):
 
 
 def convert(
-    input_path,
+    input_paths,
     bitrate,
     container,
     keep_files,
@@ -144,34 +142,34 @@ def convert(
     mp3,
 ):
     """Function that converts audio files into opus format"""
-    if os.path.isdir(input_path):
-        if multi_threading:
-            convert_folder_mt(
-                input_path,
-                bitrate,
-                container,
-                keep_files,
-                vbr,
-                common_types,
-                recursive,
-                mp3,
-            )
+    for input_path in input_paths:
+        if os.path.isdir(input_path):
+            if multi_threading:
+                convert_folder_mt(
+                    input_path,
+                    bitrate,
+                    container,
+                    keep_files,
+                    vbr,
+                    common_types,
+                    recursive,
+                    mp3,
+                )
+            else:
+                convert_folder(
+                    input_path,
+                    bitrate,
+                    container,
+                    keep_files,
+                    vbr,
+                    common_types,
+                    recursive,
+                    mp3,
+                )
+        elif os.path.isfile(input_path):
+            convert_file(input_path, bitrate, container, keep_files, vbr, mp3)
         else:
-            convert_folder(
-                input_path,
-                bitrate,
-                container,
-                keep_files,
-                vbr,
-                common_types,
-                recursive,
-                mp3,
-            )
-    elif os.path.isfile(input_path):
-        convert_file(input_path, bitrate, container, keep_files, vbr, mp3)
-    else:
-        print(f"The path/file {input_path} is invalid!")
-        sys.exit(1)
+            print(f"The path/file {input_path} is invalid!")
 
 
 def main():
@@ -200,7 +198,8 @@ def main():
     # If no flag is specified for multi_threading, use default value from config file
     if multi_threading is None:
         multi_threading = MT
-    if len(sys.argv) > 1:
+
+    if args.input:
         convert(
             args.input,
             args.bitrate,
