@@ -6,27 +6,27 @@ import subprocess
 import sys
 
 from convopus import __version__
-from convopus.config import generate_config, print_config, read_config
+from convopus.config import REQUIRED_KEYS, generate_config, print_config, read_config
 from convopus.convert import convert_file, convert_folder
 
-# Read config data once
-CONFIG_DATA = read_config()
-try:
-    COMMON_TYPES = CONFIG_DATA["COMMONTYPES"]
-    PREFERRED_BITRATE = CONFIG_DATA["BITRATE"]
-    CONTAINER = CONFIG_DATA["CONTAINER"]
-    VARIABLY_BIT_RATE = CONFIG_DATA["VBR"]
-    RECURSIVE = CONFIG_DATA["RECURSIVE"]
-    KEEP_FILES = CONFIG_DATA.get("KEEP", True)
-    # BETA multithreading only total progress bar , saving original not ideal
-    MT = CONFIG_DATA.get("MULTI_THREADING")
-except KeyError:
-    print(
-        "Config error! Please generate new config\nWould you like to generate a new config file? (Y/N)"
-    )
-    if input().strip().lower() == "y":
-        generate_config()
-    sys.exit(0)
+
+def load_config():
+    """Read the user config file, validating required keys.
+
+    Offers to regenerate the config when required keys are missing.
+    """
+    try:
+        config_data = read_config()
+        for key in REQUIRED_KEYS:
+            config_data[key]
+    except KeyError:
+        print(
+            "Config error! Please generate new config\nWould you like to generate a new config file? (Y/N)"
+        )
+        if input().strip().lower() == "y":
+            generate_config()
+        sys.exit(0)
+    return config_data
 
 
 def check_ffmpeg():
@@ -43,7 +43,7 @@ def check_ffmpeg():
         sys.exit()
 
 
-def parse_arguments(argv):
+def parse_arguments(argv, config):
     """Function to parse command-line arguments"""
     # If user needs to view config file, just print and exit gracefully
     parser = argparse.ArgumentParser(
@@ -61,7 +61,7 @@ def parse_arguments(argv):
         "--recursive",
         help="Also convert files in subdirectories",
         action="store_true",
-        default=RECURSIVE,
+        default=config["RECURSIVE"],
     )
     group.add_argument(
         "--mp3",
@@ -72,19 +72,19 @@ def parse_arguments(argv):
         "-c",
         "--container",
         help="Container for audio files (.ogg, .opus, .oga, .mkv, .webm)",
-        default=CONTAINER,
+        default=config["CONTAINER"],
     )
     group.add_argument(
         "--vbr",
         help="Variable Bitrate option",
         choices=["on", "off"],
-        default=VARIABLY_BIT_RATE,
+        default=config["VBR"],
     )
     group.add_argument(
         "-b",
         "--bitrate",
         help="Preferred bitrate for audio files",
-        default=PREFERRED_BITRATE,
+        default=config["BITRATE"],
     )
     group.add_argument(
         "-o",
@@ -184,8 +184,9 @@ def convert(
 def main():
     """Main function to run the program"""
 
+    config = load_config()
     argv = sys.argv[1:]
-    args = parse_arguments(argv)
+    args = parse_arguments(argv, config)
     check_ffmpeg()
 
     # Set value of keep_files variable based on command-line arguments
@@ -196,7 +197,7 @@ def main():
         keep_files = False
     # If no flag is specified for keep_files, use default value from config file
     if keep_files is None:
-        keep_files = KEEP_FILES
+        keep_files = config.get("KEEP", True)
 
     # Set value of multi_threading variable based on command-line arguments
     multi_threading = None
@@ -206,7 +207,7 @@ def main():
         multi_threading = False
     # If no flag is specified for multi_threading, use default value from config file
     if multi_threading is None:
-        multi_threading = MT
+        multi_threading = config.get("MULTI_THREADING")
 
     if args.input:
         convert(
@@ -215,7 +216,7 @@ def main():
             args.container,
             keep_files,
             args.vbr,
-            COMMON_TYPES,
+            config["COMMONTYPES"],
             args.recursive,
             multi_threading,
             args.mp3,

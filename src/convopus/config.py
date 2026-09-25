@@ -8,7 +8,10 @@ from appdirs import user_config_dir
 
 APP_NAME = "convopus"
 APP_AUTHOR = "D221"
-config = {
+CONF_FILE = "config.json"
+REQUIRED_KEYS = ("COMMONTYPES", "BITRATE", "CONTAINER", "VBR", "RECURSIVE")
+
+DEFAULT_CONFIG = {
     "BITRATE": "128k",
     "CONTAINER": ".opus",
     "KEEP": True,
@@ -29,31 +32,35 @@ config = {
         ".wma",
     ),
 }
-conf_path = user_config_dir(APP_NAME, APP_AUTHOR)
-CONF_FILE = "config.json"
-conf_full_path = os.path.join(conf_path, CONF_FILE)
+
+
+def get_config_path():
+    """Full path of the user config file, resolved at call time."""
+    return os.path.join(user_config_dir(APP_NAME, APP_AUTHOR), CONF_FILE)
 
 
 def generate_config():
     """Generates configuration file."""
-    os.makedirs(conf_path, exist_ok=True)
-    with open(conf_full_path, "w", encoding="utf-8") as config_file:
-        json.dump(config, config_file, indent=4)
+    config_path = get_config_path()
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+    with open(config_path, "w", encoding="utf-8") as config_file:
+        json.dump(DEFAULT_CONFIG, config_file, indent=4)
 
 
 def read_config():
-    """Reads configuration file."""
-    if not os.path.isfile(conf_full_path):
+    """Reads configuration file, generating a default one if missing."""
+    config_path = get_config_path()
+    if not os.path.isfile(config_path):
         generate_config()
-    with open(conf_full_path, "r", encoding="utf-8") as config_file:
-        config_read = json.load(config_file)
-        return config_read
+    with open(config_path, "r", encoding="utf-8") as config_file:
+        return json.load(config_file)
 
 
 def print_config():
-    """Prints config location and it's content."""
-    print(conf_full_path)
-    with open(conf_full_path, "r", encoding="utf-8") as config_file:
+    """Prints config location and its content."""
+    config_path = get_config_path()
+    print(config_path)
+    with open(config_path, "r", encoding="utf-8") as config_file:
         print(config_file.read())
         sys.exit()
 
