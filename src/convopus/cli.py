@@ -1,4 +1,4 @@
-"""Main program"""
+"""Command line interface for convopus."""
 
 import argparse
 import os
@@ -6,9 +6,8 @@ import subprocess
 import sys
 
 from convopus import __version__
-from convopus.app import convert_file, convert_folder
-from convopus.app_mt import convert_folder_mt
-from convopus.genconf import generate_config, print_config, read_config
+from convopus.config import generate_config, print_config, read_config
+from convopus.convert import convert_file, convert_folder
 
 # Read config data once
 CONFIG_DATA = read_config()
@@ -155,30 +154,18 @@ def convert(
     """Function that converts audio files into opus format"""
     for input_path in input_paths:
         if os.path.isdir(input_path):
-            if multi_threading:
-                convert_folder_mt(
-                    input_path,
-                    bitrate,
-                    container,
-                    keep_files,
-                    vbr,
-                    common_types,
-                    recursive,
-                    mp3,
-                    out_dir,
-                )
-            else:
-                convert_folder(
-                    input_path,
-                    bitrate,
-                    container,
-                    keep_files,
-                    vbr,
-                    common_types,
-                    recursive,
-                    mp3,
-                    out_dir,
-                )
+            convert_folder(
+                input_path,
+                bitrate,
+                container,
+                keep_files,
+                vbr,
+                common_types,
+                recursive,
+                mp3,
+                out_dir,
+                multi_threading,
+            )
         elif os.path.isfile(input_path):
             convert_file(
                 input_path,

@@ -1,4 +1,4 @@
-"""Generates default config file"""
+"""Configuration file handling: generation, reading, printing."""
 
 import json
 import os

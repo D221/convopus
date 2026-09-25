@@ -28,11 +28,11 @@ pyinstaller build.spec   # -> dist/convopus.exe
 
 ## Gotchas
 
-- **Config is read at import time** (`CONFIG_DATA = read_config()` at module level in `main.py`) from the OS user-config dir (`%LocalAppData%\D221\convopus\config.json` on Windows). There is no config file in this repo. Required keys: `BITRATE`, `CONTAINER`, `VBR`, `RECURSIVE`, `COMMONTYPES`; `KEEP` and `MULTI_THREADING` are optional. A missing key (e.g. older user configs without `RECURSIVE`) triggers an interactive "generate new config?" prompt and exit. Importing `convopus` anywhere (scripts, tests) triggers this read.
-- **Version single source of truth**: `__version__` literal in `src/convopus/__init__.py`; `setup.cfg` picks it up via `attr: convopus.__version__` and `main.py` imports it for `--version`. Don't hardcode versions anywhere else.
-- **ffmpeg args are built twice** and must stay in sync: `app.py::convert_file` (single-thread path, runs through vendored `ffpb_convopus/ffpb.py`) and `app_mt.py::convert_file_mt` (multiprocessing `Pool` path, direct `subprocess.run`).
-- **`--out` path logic is centralized** in `convopus/outpath.py` — `build_output_path` mirrors the input structure under the output dir, `filter_out_dir_files` keeps an out-dir nested inside a scanned tree from being re-converted. Both convert paths use it; don't reimplement per path.
-- **`ffpb.main(argv=...)` prepends `"ffmpeg"` itself** — pass args without the binary name (as `app.py` does). `app_mt.py` calls subprocess directly and includes it.
+- **Config is read at import time** (`CONFIG_DATA = read_config()` at module level in `cli.py`) from the OS user-config dir (`%LocalAppData%\D221\convopus\config.json` on Windows). There is no config file in this repo. Required keys: `BITRATE`, `CONTAINER`, `VBR`, `RECURSIVE`, `COMMONTYPES`; `KEEP` and `MULTI_THREADING` are optional. A missing key (e.g. older user configs without `RECURSIVE`) triggers an interactive "generate new config?" prompt and exit. Importing `convopus` anywhere (scripts, tests) triggers this read.
+- **Version single source of truth**: `__version__` literal in `src/convopus/__init__.py`; `setup.cfg` picks it up via `attr: convopus.__version__` and `cli.py` imports it for `--version`. Don't hardcode versions anywhere else.
+- **Conversion is one module**: `convopus/convert.py` holds both paths — sequential (`convert_file`/`convert_folder`, through vendored ffpb → per-file progress bars) and multiprocessing (`_convert_file_mt`, direct `subprocess.run` → total progress only). `_ffmpeg_args` builds the argument list once for both; keep the two branches behavior-identical when editing.
+- **`--out` path logic is centralized** in `convopus/outpath.py` — `build_output_path` mirrors the input structure under the output dir, `filter_out_dir_files` keeps an out-dir nested inside a scanned tree from being re-converted. Both branches in `convert.py` use it; don't reimplement per path.
+- **`ffpb.main(argv=...)` prepends `"ffmpeg"` itself** — args exclude the binary name. The multiprocessing branch runs `subprocess` directly and must add it: `["ffmpeg"] + _ffmpeg_args(...) + ["-loglevel", "error"]`.
 
 ## CI / release
 
