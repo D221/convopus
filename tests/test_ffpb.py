@@ -19,5 +19,11 @@ def test_get_output_extracts_basename():
     assert notifier.get_output(line) == "song.opus"
 
 
+def test_get_output_handles_posix_paths():
+    notifier = ProgressNotifier()
+    line = b"Output #0, ogg, to '/home/user/music/song.opus':"
+    assert notifier.get_output(line) == "song.opus"
+
+
 def test_get_output_returns_none_when_absent():
     assert ProgressNotifier().get_output(b"Input #0, wav, from 'a.wav':") is None

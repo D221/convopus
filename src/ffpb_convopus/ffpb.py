@@ -96,7 +96,10 @@ class ProgressNotifier:
         """Gets output filename from ffmpeg."""
         search = self._OUTPUT_RX.search(line)
         if search is not None:
-            return os.path.basename(search.group(1).decode(self.encoding))
+            # ffmpeg emits native separators per platform; normalize so the
+            # basename is correct on every OS for both "/" and "\\" paths.
+            output = search.group(1).decode(self.encoding)
+            return output.replace("\\", "/").rsplit("/", 1)[-1]
         return None
 
     def progress(self, line):
