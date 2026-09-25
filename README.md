@@ -2,7 +2,7 @@
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/D221/convopus?label=Download)](https://github.com/D221/convopus/releases/latest)
 ![GitHub](https://img.shields.io/github/license/D221/convopus)
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/D221/convopus/pylint.yml?branch=main)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/D221/convopus/test.yml?branch=main&label=tests)
 
 convopus is a Python CLI program for converting audio files to [opus](https://opus-codec.org/) audio format.
 
@@ -89,6 +89,8 @@ You can customize settings in **config.json** located in:
 |Windows|%LocalAppData%\D221\convopus|
 |Linux|~/.config/convopus|
 |macOS|~/Library/Application Support/convopus|
+
+You can override the config file location with the `CONVOPUS_CONFIG` environment variable. Configs from older convopus versions are migrated automatically on first run.
 
 ## License
 

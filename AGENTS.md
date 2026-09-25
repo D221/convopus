@@ -1,40 +1,45 @@
 # AGENTS.md
 
-convopus — small Python CLI (src layout, stdlib + appdirs/tqdm) that converts audio files/directories to Opus (or MP3) by shelling out to ffmpeg. ffmpeg must be on PATH; it is checked at startup and the program exits if missing.
+convopus — small Python CLI (src layout, stdlib + platformdirs/tqdm) that converts audio files/directories to Opus (or MP3) by shelling out to ffmpeg. ffmpeg must be on PATH; it is checked at startup and the program exits if missing.
 
 ## Commands
 
 ```bash
-# Setup — src layout: the CLI only works when installed
-pip install -e .
+# Setup — uv manages the venv and lockfile
+uv sync
 
-# Run (console script defined in setup.cfg)
-convopus <file-or-dir>
-python -m convopus <file-or-dir>   # also works (__main__.py)
+# Run (console script defined in pyproject.toml)
+uv run convopus <file-or-dir>
+uv run python -m convopus <file-or-dir>   # also works (__main__.py)
 
-# Manual verification (no test suite exists; .pytest_cache/ is a stale artifact).
-# -k keeps originals, -nm avoids the multiprocessing path.
-convopus -k -nm -b 96k <some .flac/.wav file>
+# Tests — `integration` marker = real ffmpeg conversions, auto-skipped without ffmpeg
+uv run pytest                        # everything (~3 s)
+uv run pytest -m "not integration"   # fast unit-only loop (<2 s)
+uv run pytest --cov                  # with coverage report
 
-# Lint, format, typecheck (no config files — tool defaults are the contract).
-# CI pylint runs with --exit-zero (never blocks); ruff + ty are the real local gates.
-uvx ruff check src/
-uvx ruff format src/
-uvx ty check src/
+# Manual verification of a change against real audio
+uv run convopus -k -nm -b 96k <some .flac/.wav file>
+
+# Lint, format, typecheck (no config files — tool defaults are the contract)
+uv run ruff check src/ tests/
+uv run ruff format src/ tests/
+uv run ty check src/ tests/
 
 # Windows exe build (spec file is intentionally not gitignored)
-pyinstaller build.spec   # -> dist/convopus.exe
+uvx pyinstaller build.spec   # -> dist/convopus.exe
 ```
 
 ## Gotchas
 
-- **Config is read at import time** (`CONFIG_DATA = read_config()` at module level in `cli.py`) from the OS user-config dir (`%LocalAppData%\D221\convopus\config.json` on Windows). There is no config file in this repo. Required keys: `BITRATE`, `CONTAINER`, `VBR`, `RECURSIVE`, `COMMONTYPES`; `KEEP` and `MULTI_THREADING` are optional. A missing key (e.g. older user configs without `RECURSIVE`) triggers an interactive "generate new config?" prompt and exit. Importing `convopus` anywhere (scripts, tests) triggers this read.
-- **Version single source of truth**: `__version__` literal in `src/convopus/__init__.py`; `setup.cfg` picks it up via `attr: convopus.__version__` and `cli.py` imports it for `--version`. Don't hardcode versions anywhere else.
+- **Config**: `convopus/config.py` defines a frozen `Config` dataclass. `load()` (called once in `main()`) creates a missing config with defaults, fills missing keys from defaults, repairs invalid values with a stderr warning, and never exits on bad config. Importing `convopus` has NO side effects — config is read at runtime, not import time. Keys match case-insensitively (legacy UPPERCASE configs still work). Location: platformdirs user config dir (`%LocalAppData%\D221\convopus\config.json` on Windows), overridable via the `CONVOPUS_CONFIG` env var. A one-time migration from the old appdirs roaming location runs automatically.
+- **Version single source of truth**: `__version__` literal in `src/convopus/__init__.py`; pyproject reads it via `attr:` and `cli.py` imports it for `--version`. Don't hardcode versions anywhere else.
 - **Conversion is one module**: `convopus/convert.py` holds both paths — sequential (`convert_file`/`convert_folder`, through vendored ffpb → per-file progress bars) and multiprocessing (`_convert_file_mt`, direct `subprocess.run` → total progress only). `_ffmpeg_args` builds the argument list once for both; keep the two branches behavior-identical when editing.
 - **`--out` path logic is centralized** in `convopus/outpath.py` — `build_output_path` mirrors the input structure under the output dir, `filter_out_dir_files` keeps an out-dir nested inside a scanned tree from being re-converted. Both branches in `convert.py` use it; don't reimplement per path.
 - **`ffpb.main(argv=...)` prepends `"ffmpeg"` itself** — args exclude the binary name. The multiprocessing branch runs `subprocess` directly and must add it: `["ffmpeg"] + _ffmpeg_args(...) + ["-loglevel", "error"]`.
+- **Never isolate config in tests via APPDATA-style env vars** — on Windows, platformdirs resolves the real profile through the Win32 shell API and ignores them. The autouse `isolated_config` fixture uses the `CONVOPUS_CONFIG` override, which subprocesses inherit.
+- **ffmpeg won't overwrite existing outputs** — it prompts `[y/N]` (handled interactively on the sequential path via ffpb; the multiprocessing path errors on refusal). Pre-existing behavior, not a bug.
 
 ## CI / release
 
-- pylint on every push (matrix 3.8/3.9/3.10, `--exit-zero`), CodeQL on pushes/PRs to main.
-- Publishing to PyPI is automatic when a GitHub Release is published (`python-publish.yml` runs `python -m build` + twine upload).
+- Test workflow on every push/PR: ruff check + format check, ty typecheck, pytest with coverage — matrix {ubuntu, windows} × Python {3.10, 3.13}.
+- Publishing to PyPI is automatic when a GitHub Release is published (`python-publish.yml` runs `python -m build` + twine upload). CodeQL scans pushes/PRs to main.
