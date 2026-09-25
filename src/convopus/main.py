@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 
+from convopus import __version__
 from convopus.app import convert_file, convert_folder
 from convopus.app_mt import convert_folder_mt
 from convopus.genconf import generate_config, print_config, read_config
@@ -121,7 +122,7 @@ def parse_arguments(argv):
         action="store_true",
         dest="print_config",
     )
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.4.2")
+    parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")
 
     args = parser.parse_args(args=argv)
     if args.print_config:

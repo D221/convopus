@@ -36,8 +36,8 @@ from tqdm import tqdm
 class ProgressNotifier:
     """Displays progress bar for ffmpeg."""
 
-    _DURATION_RX = re.compile(b"Duration: (\d{2}):(\d{2}):(\d{2})\.\d{2}")
-    _PROGRESS_RX = re.compile(b"time=(\d{2}):(\d{2}):(\d{2})\.\d{2}")
+    _DURATION_RX = re.compile(rb"Duration: (\d{2}):(\d{2}):(\d{2})\.\d{2}")
+    _PROGRESS_RX = re.compile(rb"time=(\d{2}):(\d{2}):(\d{2})\.\d{2}")
     _OUTPUT_RX = re.compile(b"to '(.*)':")
 
     @staticmethod
