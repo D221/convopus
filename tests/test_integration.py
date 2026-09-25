@@ -6,11 +6,9 @@ inside pytest are a trap, and the subprocess exercises the real
 __main__ guard + worker bootstrap path.
 """
 
-import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
@@ -83,21 +81,20 @@ def test_delete_original_when_not_keep(tmp_path, make_wav):
     assert (tmp_path / "gone.opus").is_file()
 
 
-def test_multiprocessing_folder_subprocess(tmp_path, make_wav):
+def test_multiprocessing_folder_subprocess(tmp_path, make_wav, isolated_config):
     root = tmp_path / "music"
     (root / "sub").mkdir(parents=True)
     make_wav("a.wav", parent=root)
     make_wav("b.wav", parent=root / "sub")
     out = tmp_path / "out"
-    config_dir = tmp_path / "cfg"
-    repo_root = Path(__file__).resolve().parent.parent
 
-    env = os.environ.copy()
-    env["CONVOPUS_TEST_CONFIG_DIR"] = str(config_dir)
+    # isolated_config points CONVOPUS_CONFIG into tmp_path; the subprocess
+    # inherits it, so config.json is generated inside tmp and nowhere else.
     result = subprocess.run(
         [
             sys.executable,
-            str(Path(__file__).parent / "_mt_entry.py"),
+            "-m",
+            "convopus",
             "-k",
             "-m",
             "-r",
@@ -109,8 +106,6 @@ def test_multiprocessing_folder_subprocess(tmp_path, make_wav):
         ],
         capture_output=True,
         text=True,
-        env=env,
-        cwd=repo_root,
         timeout=120,
         check=False,
     )
@@ -118,4 +113,4 @@ def test_multiprocessing_folder_subprocess(tmp_path, make_wav):
     assert result.returncode == 0, result.stderr
     assert (out / "a.opus").is_file()
     assert (out / "sub" / "b.opus").is_file()
-    assert (config_dir / "config.json").is_file()
+    assert isolated_config.is_file()
