@@ -44,10 +44,12 @@ def test_mt_flags_mutually_exclusive():
 
 
 def test_version_exits_with_version_string(capsys):
+    from convopus import __version__
+
     with pytest.raises(SystemExit) as excinfo:
         parse_arguments(["-v"], Config())
     assert excinfo.value.code == 0
-    assert "1.4.3" in capsys.readouterr().out
+    assert __version__ in capsys.readouterr().out
 
 
 def test_print_config_prints_location_and_exits(capsys, isolated_config):
