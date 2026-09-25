@@ -152,6 +152,11 @@ def config_path() -> Path:
     return user_config_path(APP_NAME, APP_AUTHOR) / "config.json"
 
 
+def legacy_config_path() -> Path:
+    """Pre-platformdirs config location (appdirs used the roaming dir)."""
+    return user_config_path(APP_NAME, APP_AUTHOR, roaming=True) / "config.json"
+
+
 def write_default(path: Path | None = None) -> Path:
     """Write a default config file and return its path."""
     file = config_path() if path is None else Path(path)
@@ -163,12 +168,16 @@ def write_default(path: Path | None = None) -> Path:
 def load(path: Path | None = None) -> Config:
     """Load the user configuration.
 
-    A missing file is created with defaults. Missing keys, unknown keys
-    and invalid values never fail: defaults apply (with a warning on
-    stderr) so the CLI always runs.
+    A missing file is created with defaults — or, at the default location
+    only, migrated from the legacy appdirs location if one exists. Missing
+    keys, unknown keys and invalid values never fail: defaults apply (with
+    a warning on stderr) so the CLI always runs.
     """
     file = config_path() if path is None else Path(path)
     if not file.is_file():
+        migrated = _migrate_legacy_config(file) if path is None else None
+        if migrated is not None:
+            return migrated
         write_default(file)
         return Config()
     try:
@@ -177,6 +186,24 @@ def load(path: Path | None = None) -> Config:
         _warn(f"could not read {file} ({error}); using defaults")
         return Config()
     return Config.from_mapping(raw)
+
+
+def _migrate_legacy_config(file: Path) -> Config | None:
+    """Copy a legacy appdirs config to the new location, if one exists."""
+    if os.environ.get(ENV_OVERRIDE):
+        return None
+    legacy = legacy_config_path()
+    if legacy == file or not legacy.is_file():
+        return None
+    try:
+        raw = json.loads(legacy.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    _warn(f"migrating config from {legacy} to {file}")
+    config = Config.from_mapping(raw)
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text(json.dumps(asdict(config), indent=4) + "\n", encoding="utf-8")
+    return config
 
 
 def print_config(path: Path | None = None) -> None:

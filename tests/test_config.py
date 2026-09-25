@@ -118,6 +118,47 @@ def test_load_explicit_path_does_not_touch_default(isolated_config, tmp_path):
     assert not isolated_config.exists()
 
 
+def test_load_migrates_legacy_config(monkeypatch, isolated_config, tmp_path, capsys):
+    """A config left by pre-platformdirs builds (roaming dir) is migrated."""
+    legacy_dir = tmp_path / "legacy-roaming"
+    new_dir = tmp_path / "new-local"
+
+    def fake_user_config_path(*args, **kwargs):
+        return legacy_dir if kwargs.get("roaming") else new_dir
+
+    monkeypatch.setattr("convopus.config.user_config_path", fake_user_config_path)
+    monkeypatch.delenv("CONVOPUS_CONFIG")
+    legacy_dir.mkdir(parents=True)
+    (legacy_dir / "config.json").write_text(
+        json.dumps({"BITRATE": "160k", "CONTAINER": ".ogg"}), encoding="utf-8"
+    )
+
+    config = load()
+
+    assert config.bitrate == "160k"
+    assert config.container == ".ogg"
+    assert (new_dir / "config.json").is_file()
+    assert "migrating" in capsys.readouterr().err
+
+
+def test_migration_skipped_when_env_override_set(
+    monkeypatch, isolated_config, tmp_path
+):
+    def fake_user_config_path(*args, **kwargs):
+        return tmp_path / "legacy" if kwargs.get("roaming") else tmp_path / "ignored"
+
+    monkeypatch.setattr("convopus.config.user_config_path", fake_user_config_path)
+    legacy = tmp_path / "legacy" / "config.json"
+    legacy.parent.mkdir(parents=True)
+    legacy.write_text(json.dumps({"bitrate": "320k"}), encoding="utf-8")
+
+    config = load()
+
+    assert config == Config()
+    assert isolated_config.is_file()
+    assert not (tmp_path / "ignored" / "config.json").exists()
+
+
 def test_from_mapping_ignores_unknown_keys():
     config = Config.from_mapping({"future_option": 42, "bitrate": "64k"})
     assert config.bitrate == "64k"
