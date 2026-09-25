@@ -27,7 +27,7 @@ classifiers = [
   "Topic :: Multimedia :: Sound/Audio :: Conversion",
   "Topic :: Utilities",
 ]
-dependencies = ["appdirs", "tqdm"]
+dependencies = ["platformdirs", "tqdm"]
 
 [project.urls]
 Homepage = "https://github.com/D221/convopus"

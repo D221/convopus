@@ -6,27 +6,8 @@ import subprocess
 import sys
 
 from convopus import __version__
-from convopus.config import REQUIRED_KEYS, generate_config, print_config, read_config
+from convopus.config import load, print_config
 from convopus.convert import convert_file, convert_folder
-
-
-def load_config():
-    """Read the user config file, validating required keys.
-
-    Offers to regenerate the config when required keys are missing.
-    """
-    try:
-        config_data = read_config()
-        for key in REQUIRED_KEYS:
-            config_data[key]
-    except KeyError:
-        print(
-            "Config error! Please generate new config\nWould you like to generate a new config file? (Y/N)"
-        )
-        if input().strip().lower() == "y":
-            generate_config()
-        sys.exit(0)
-    return config_data
 
 
 def check_ffmpeg():
@@ -61,7 +42,7 @@ def parse_arguments(argv, config):
         "--recursive",
         help="Also convert files in subdirectories",
         action="store_true",
-        default=config["RECURSIVE"],
+        default=config.recursive,
     )
     group.add_argument(
         "--mp3",
@@ -72,19 +53,19 @@ def parse_arguments(argv, config):
         "-c",
         "--container",
         help="Container for audio files (.ogg, .opus, .oga, .mkv, .webm)",
-        default=config["CONTAINER"],
+        default=config.container,
     )
     group.add_argument(
         "--vbr",
         help="Variable Bitrate option",
         choices=["on", "off"],
-        default=config["VBR"],
+        default=config.vbr,
     )
     group.add_argument(
         "-b",
         "--bitrate",
         help="Preferred bitrate for audio files",
-        default=config["BITRATE"],
+        default=config.bitrate,
     )
     group.add_argument(
         "-o",
@@ -184,7 +165,7 @@ def convert(
 def main():
     """Main function to run the program"""
 
-    config = load_config()
+    config = load()
     argv = sys.argv[1:]
     args = parse_arguments(argv, config)
     check_ffmpeg()
@@ -197,7 +178,7 @@ def main():
         keep_files = False
     # If no flag is specified for keep_files, use default value from config file
     if keep_files is None:
-        keep_files = config.get("KEEP", True)
+        keep_files = config.keep
 
     # Set value of multi_threading variable based on command-line arguments
     multi_threading = None
@@ -207,7 +188,7 @@ def main():
         multi_threading = False
     # If no flag is specified for multi_threading, use default value from config file
     if multi_threading is None:
-        multi_threading = config.get("MULTI_THREADING")
+        multi_threading = config.multi_threading
 
     if args.input:
         convert(
@@ -216,7 +197,7 @@ def main():
             args.container,
             keep_files,
             args.vbr,
-            config["COMMONTYPES"],
+            config.common_types,
             args.recursive,
             multi_threading,
             args.mp3,
