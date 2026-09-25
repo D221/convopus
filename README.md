@@ -40,15 +40,17 @@ convopus -h # for info
 convopus /path/to/directory
 convopus /path/to/file.flac
 ```
+
+With `-o/--out DIRECTORY` converted files are written to that directory instead of next to the originals: the input structure is mirrored under it — subfolders are recreated when `-r/--recursive` is used, otherwise files are placed directly in the output directory.
 ```
 usage: convopus [-h] [-r] [--mp3] [-c CONTAINER] [--vbr {on,off}] [-b BITRATE]
-                [-k | -dk] [-m | -nm] [--config] [-v]
-                [input]
+                [-o DIRECTORY] [-k | -dk] [-m | -nm] [--config] [-v]
+                [input ...]
 
 A Python CLI program for converting audio files to opus
 
 positional arguments:
-  input                 Input file or directory (optional) (default: None)
+  input                 Input files or directories (optional) (default: None)
 
 options:
   -h, --help            show this help message and exit
@@ -75,6 +77,9 @@ Conversion Options:
   --vbr {on,off}        Variable Bitrate option (default: on)
   -b BITRATE, --bitrate BITRATE
                         Preferred bitrate for audio files (default: 128k)
+  -o DIRECTORY, --out DIRECTORY
+                        Output directory for converted files (input structure
+                        is mirrored under it) (default: None)
 ```
 
 You can customize settings in **config.json** located in:

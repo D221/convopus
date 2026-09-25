@@ -6,6 +6,7 @@ import sys
 
 from tqdm import tqdm
 
+from convopus.outpath import build_output_path, filter_out_dir_files
 from ffpb_convopus import ffpb
 
 
@@ -23,6 +24,7 @@ def convert_folder(
     config_common_types,
     recursive,
     mp3,
+    output_dir=None,
 ):
     """For converting audio files in a folder."""
     signal.signal(signal.SIGINT, signal_handler)
@@ -41,6 +43,7 @@ def convert_folder(
             if filename.endswith(tuple(config_common_types))
         ]
     )
+    files_to_convert = filter_out_dir_files(files_to_convert, output_dir)
 
     if not files_to_convert:
         print("No files to convert")
@@ -62,17 +65,32 @@ def convert_folder(
                 keep_files=keep_files,
                 vbr=vbr,
                 mp3=mp3,
+                input_root=input_path,
+                output_dir=output_dir,
             )
             pbar.postfix = f"{idx + 1}/{len(files_to_convert)}"
             pbar.update(1)
 
 
-def convert_file(file_name, prefered_bitrate, file_container, keep_files, vbr, mp3):
+def convert_file(
+    file_name,
+    prefered_bitrate,
+    file_container,
+    keep_files,
+    vbr,
+    mp3,
+    input_root=None,
+    output_dir=None,
+):
     """For converting a single audio file."""
-    if mp3:
-        output_file = os.path.join(os.path.splitext(file_name)[0] + ".mp3")
+    if output_dir:
+        output_file = build_output_path(
+            input_root or ".", file_name, output_dir, file_container, mp3
+        )
+    elif mp3:
+        output_file = os.path.splitext(file_name)[0] + ".mp3"
     else:
-        output_file = os.path.join(os.path.splitext(file_name)[0] + file_container)
+        output_file = os.path.splitext(file_name)[0] + file_container
 
     # Select appropriate codec and options
     ffmpeg_cmd = [

@@ -87,6 +87,13 @@ def parse_arguments(argv):
         help="Preferred bitrate for audio files",
         default=PREFERRED_BITRATE,
     )
+    group.add_argument(
+        "-o",
+        "--out",
+        metavar="DIRECTORY",
+        help="Output directory for converted files (input structure is mirrored under it)",
+        default=None,
+    )
 
     action_group_keep = parser.add_mutually_exclusive_group(required=False)
     action_group_keep.add_argument(
@@ -143,6 +150,7 @@ def convert(
     recursive,
     multi_threading,
     mp3,
+    out_dir,
 ):
     """Function that converts audio files into opus format"""
     for input_path in input_paths:
@@ -157,6 +165,7 @@ def convert(
                     common_types,
                     recursive,
                     mp3,
+                    out_dir,
                 )
             else:
                 convert_folder(
@@ -168,9 +177,19 @@ def convert(
                     common_types,
                     recursive,
                     mp3,
+                    out_dir,
                 )
         elif os.path.isfile(input_path):
-            convert_file(input_path, bitrate, container, keep_files, vbr, mp3)
+            convert_file(
+                input_path,
+                bitrate,
+                container,
+                keep_files,
+                vbr,
+                mp3,
+                input_root=os.path.dirname(input_path) or ".",
+                output_dir=out_dir,
+            )
         else:
             print(f"The path/file {input_path} is invalid!")
 
@@ -213,6 +232,7 @@ def main():
             args.recursive,
             multi_threading,
             args.mp3,
+            args.out,
         )
     else:
         print("See convopus --help for usage")

@@ -7,6 +7,8 @@ from multiprocessing import Pool, cpu_count
 
 from tqdm import tqdm
 
+from convopus.outpath import build_output_path, filter_out_dir_files
+
 
 def convert_folder_mt(
     input_path,
@@ -17,6 +19,7 @@ def convert_folder_mt(
     config_common_types,
     recursive,
     mp3,
+    output_dir=None,
 ):
     """For converting audio files in a folder."""
     files_to_convert = (
@@ -33,6 +36,7 @@ def convert_folder_mt(
             if filename.endswith(tuple(config_common_types))
         ]
     )
+    files_to_convert = filter_out_dir_files(files_to_convert, output_dir)
 
     if not files_to_convert:
         print("No files to convert")
@@ -46,6 +50,8 @@ def convert_folder_mt(
         keep_files=keep_files,
         vbr=vbr,
         mp3=mp3,
+        input_root=input_path,
+        output_dir=output_dir,
     )
     with tqdm(
         total=len(files_to_convert),
@@ -61,12 +67,25 @@ def convert_folder_mt(
     # implement KeyboardInterrupt
 
 
-def convert_file_mt(file_name, prefered_bitrate, file_container, keep_files, vbr, mp3):
+def convert_file_mt(
+    file_name,
+    prefered_bitrate,
+    file_container,
+    keep_files,
+    vbr,
+    mp3,
+    input_root=None,
+    output_dir=None,
+):
     """For converting a single audio file."""
-    if mp3:
-        output_file = os.path.join(os.path.splitext(file_name)[0] + ".mp3")
+    if output_dir:
+        output_file = build_output_path(
+            input_root or ".", file_name, output_dir, file_container, mp3
+        )
+    elif mp3:
+        output_file = os.path.splitext(file_name)[0] + ".mp3"
     else:
-        output_file = os.path.join(os.path.splitext(file_name)[0] + file_container)
+        output_file = os.path.splitext(file_name)[0] + file_container
 
     ffmpeg_cmd = [
         "ffmpeg",
