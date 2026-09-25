@@ -63,7 +63,7 @@ def convert_folder(
                 vbr=vbr,
                 mp3=mp3,
             )
-            pbar.postfix = f"{idx+1}/{len(files_to_convert)}"
+            pbar.postfix = f"{idx + 1}/{len(files_to_convert)}"
             pbar.update(1)
 
 

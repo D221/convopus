@@ -21,8 +21,7 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
 # OR OTHER DEALINGS IN THE SOFTWARE.
 
-"""A progress bar for `ffmpeg` using `tqdm`.
-"""
+"""A progress bar for `ffmpeg` using `tqdm`."""
 
 import os
 import re
@@ -104,7 +103,6 @@ class ProgressNotifier:
         """Displays tqdm progress bar."""
         search = self._PROGRESS_RX.search(line)
         if search is not None:
-
             total = self.duration  # gets track duration
             current = self._seconds(*search.groups())  # gets current progress
 
@@ -127,9 +125,11 @@ def main(argv=None, stream=sys.stderr):
 
     try:
         with ProgressNotifier(file=stream) as notifier:
-
             cmd = ["ffmpeg"] + argv
             _process = subprocess.Popen(cmd, stderr=subprocess.PIPE)
+            assert (
+                _process.stderr is not None
+            )  # stderr=PIPE guarantees this for type checkers
 
             while True:
                 out = _process.stderr.read(1)

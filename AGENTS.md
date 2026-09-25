@@ -16,9 +16,11 @@ python -m convopus <file-or-dir>   # also works (__main__.py)
 # -k keeps originals, -nm avoids the multiprocessing path.
 convopus -k -nm -b 96k <some .flac/.wav file>
 
-# Lint: no pylint/black config files; CI runs pylint with --exit-zero (never blocks).
-# Match existing style: black formatting.
-pylint src/convopus
+# Lint, format, typecheck (no config files — tool defaults are the contract).
+# CI pylint runs with --exit-zero (never blocks); ruff + ty are the real local gates.
+uvx ruff check src/
+uvx ruff format src/
+uvx ty check src/
 
 # Windows exe build (spec file is intentionally not gitignored)
 pyinstaller build.spec   # -> dist/convopus.exe

@@ -1,3 +1,3 @@
 __version__ = "1.4.3"
 
-from .main import main
+from .main import main as main

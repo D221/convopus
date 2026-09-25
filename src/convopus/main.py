@@ -122,7 +122,9 @@ def parse_arguments(argv):
         action="store_true",
         dest="print_config",
     )
-    parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument(
+        "-v", "--version", action="version", version=f"%(prog)s {__version__}"
+    )
 
     args = parser.parse_args(args=argv)
     if args.print_config:
