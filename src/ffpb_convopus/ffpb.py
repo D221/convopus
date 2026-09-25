@@ -23,7 +23,6 @@
 
 """A progress bar for `ffmpeg` using `tqdm`."""
 
-import os
 import re
 import signal
 import subprocess
