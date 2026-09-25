@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "convopus"
+dynamic = ["version"]
+description = "Python CLI program that converts directories of audio files to opus using ffmpeg"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "D221", email = "D221@airmail.cc" }]
+keywords = ["audio", "opus", "ffmpeg", "converter", "cli"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: OS Independent",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Environment :: Console",
+  "Topic :: Multimedia",
+  "Topic :: Multimedia :: Sound/Audio :: Conversion",
+  "Topic :: Utilities",
+]
+dependencies = ["appdirs", "tqdm"]
+
+[project.urls]
+Homepage = "https://github.com/D221/convopus"
+"Bug Tracker" = "https://github.com/D221/convopus/issues"
+
+[project.scripts]
+convopus = "convopus:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-cov", "ruff", "ty"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "convopus.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = ["error::SyntaxWarning"]
+markers = [
+  "integration: end-to-end tests that run real ffmpeg conversions",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["convopus"]
