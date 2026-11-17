@@ -8,6 +8,22 @@ updates:
     labels:
       - "dependencies"
     open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps(dev)"
+      include: "scope"
+    groups:
+      # Dev tooling bumps (pytest, pytest-cov, ruff, ty) arrive as one PR.
+      # Major bumps are left out so they stay individual PRs for review.
+      dev-dependencies:
+        patterns:
+          - "pytest"
+          - "pytest-cov"
+          - "ruff"
+          - "ty"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"

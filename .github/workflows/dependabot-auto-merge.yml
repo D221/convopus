@@ -1,0 +1,64 @@
+name: Dependabot auto-merge
+
+# Merges Dependabot PRs for patch/minor updates once the normal CI checks are green.
+# Major updates are deliberately left alone for manual review.
+
+on:
+  pull_request_target:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Decide whether to auto-merge
+        id: gate
+        run: |
+          update_type="${{ steps.metadata.outputs.update-type }}"
+          if [ "$update_type" = "version-update:semver-patch" ] || [ "$update_type" = "version-update:semver-minor" ]; then
+            echo "merge=yes" >> "$GITHUB_OUTPUT"
+            echo "Auto-merging $update_type: ${{ steps.metadata.outputs.dependency-names }}"
+          else
+            echo "merge=no" >> "$GITHUB_OUTPUT"
+            echo "Skipping '$update_type' (${{ steps.metadata.outputs.dependency-names }}) — needs manual review"
+          fi
+
+      - name: Approve PR
+        if: steps.gate.outputs.merge == 'yes'
+        # Needs "Allow GitHub Actions to create and approve pull requests" enabled;
+        # not required to merge, so a 403 here must not block the merge below.
+        continue-on-error: true
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for CI checks
+        id: checks
+        if: steps.gate.outputs.merge == 'yes'
+        run: |
+          # Give the workflows triggered by the PR a moment to register their checks
+          sleep 20
+          gh pr checks "$PR_URL" --watch --interval 30
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge PR
+        if: steps.checks.outcome == 'success'
+        run: gh pr merge --squash --delete-branch "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
