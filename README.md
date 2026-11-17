@@ -138,3 +138,8 @@ Keys are matched case-insensitively - configs written by older convopus versions
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
+
+## Credits
+
+- [ffpb](https://github.com/althonos/ffpb) by Martin Larralde, vendored in `src/ffpb_convopus/` under the MIT licence, provides the per-file ffmpeg progress bars.
+- The logo and app icon are original work, generated from a wave equation by `tools/make_logo.py`, and dedicated to the public domain under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).

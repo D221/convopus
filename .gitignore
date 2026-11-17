@@ -24,6 +24,8 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 .pytype/
+.ty_cache/
+.ruff_cache/
 
 # IDEs
 .idea/
