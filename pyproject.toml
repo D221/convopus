@@ -45,6 +45,9 @@ package-dir = { "" = "src" }
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+convopus = ["py.typed"]
+
 [tool.setuptools.dynamic]
 version = { attr = "convopus.__version__" }
 

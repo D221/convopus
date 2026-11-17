@@ -4,13 +4,14 @@ import argparse
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 
 from convopus import __version__
-from convopus.config import load, print_config
+from convopus.config import Config, load, print_config
 from convopus.convert import convert_file, convert_folder
 
 
-def check_ffmpeg():
+def check_ffmpeg() -> None:
     """Function to check ffmpeg installation"""
     try:
         subprocess.run(
@@ -24,7 +25,7 @@ def check_ffmpeg():
         sys.exit()
 
 
-def parse_arguments(argv, config):
+def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
     """Function to parse command-line arguments"""
     # If user needs to view config file, just print and exit gracefully
     parser = argparse.ArgumentParser(
@@ -121,17 +122,17 @@ def parse_arguments(argv, config):
 
 
 def convert(
-    input_paths,
-    bitrate,
-    container,
-    keep_files,
-    vbr,
-    common_types,
-    recursive,
-    multi_threading,
-    mp3,
-    out_dir,
-):
+    input_paths: Sequence[str],
+    bitrate: str,
+    container: str,
+    keep_files: bool,
+    vbr: str,
+    common_types: Sequence[str],
+    recursive: bool,
+    multi_threading: bool,
+    mp3: bool,
+    out_dir: str | None,
+) -> None:
     """Function that converts audio files into opus format"""
     for input_path in input_paths:
         if os.path.isdir(input_path):
@@ -162,7 +163,7 @@ def convert(
             print(f"The path/file {input_path} is invalid!")
 
 
-def main():
+def main() -> None:
     """Main function to run the program"""
 
     config = load()

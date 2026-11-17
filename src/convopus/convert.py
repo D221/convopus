@@ -4,8 +4,10 @@ import os
 import signal
 import subprocess
 import sys
+from collections.abc import Sequence
 from functools import partial
 from multiprocessing import Pool, cpu_count
+from types import FrameType
 
 from tqdm import tqdm
 
@@ -13,12 +15,14 @@ from convopus.outpath import build_output_path, filter_out_dir_files
 from ffpb_convopus import ffpb
 
 
-def _signal_handler(sig, frame):
+def _signal_handler(sig: int, frame: FrameType | None) -> None:
     """SIGINT handler."""
     sys.exit(0)
 
 
-def _collect_files(input_path, config_common_types, recursive):
+def _collect_files(
+    input_path: str, config_common_types: Sequence[str], recursive: bool
+) -> list[str]:
     """List convertible audio files in or below input_path."""
     if recursive:
         return [
@@ -34,7 +38,7 @@ def _collect_files(input_path, config_common_types, recursive):
     ]
 
 
-def _total_progress_bar(total):
+def _total_progress_bar(total: int) -> tqdm:
     """Create the shared total progress bar."""
     return tqdm(
         total=total,
@@ -46,7 +50,13 @@ def _total_progress_bar(total):
     )
 
 
-def _resolve_output_file(file_name, file_container, mp3, input_root, output_dir):
+def _resolve_output_file(
+    file_name: str,
+    file_container: str,
+    mp3: bool,
+    input_root: str | None,
+    output_dir: str | None,
+) -> str:
     """Output next to the input, or mirrored under output_dir when given."""
     if output_dir:
         return build_output_path(
@@ -57,7 +67,9 @@ def _resolve_output_file(file_name, file_container, mp3, input_root, output_dir)
     return os.path.splitext(file_name)[0] + file_container
 
 
-def _ffmpeg_args(file_name, output_file, prefered_bitrate, vbr, mp3):
+def _ffmpeg_args(
+    file_name: str, output_file: str, prefered_bitrate: str, vbr: str, mp3: bool
+) -> list[str]:
     """Shared ffmpeg argument list (without the binary name)."""
     args = [
         "-i",
@@ -77,15 +89,15 @@ def _ffmpeg_args(file_name, output_file, prefered_bitrate, vbr, mp3):
 
 
 def convert_file(
-    file_name,
-    prefered_bitrate,
-    file_container,
-    keep_files,
-    vbr,
-    mp3,
-    input_root=None,
-    output_dir=None,
-):
+    file_name: str,
+    prefered_bitrate: str,
+    file_container: str,
+    keep_files: bool,
+    vbr: str,
+    mp3: bool,
+    input_root: str | None = None,
+    output_dir: str | None = None,
+) -> None:
     """For converting a single audio file (sequential, with ffpb progress)."""
     output_file = _resolve_output_file(
         file_name, file_container, mp3, input_root, output_dir
@@ -97,15 +109,15 @@ def convert_file(
 
 
 def _convert_file_mt(
-    file_name,
-    prefered_bitrate,
-    file_container,
-    keep_files,
-    vbr,
-    mp3,
-    input_root=None,
-    output_dir=None,
-):
+    file_name: str,
+    prefered_bitrate: str,
+    file_container: str,
+    keep_files: bool,
+    vbr: str,
+    mp3: bool,
+    input_root: str | None = None,
+    output_dir: str | None = None,
+) -> None:
     """For converting a single audio file in a worker process."""
     output_file = _resolve_output_file(
         file_name, file_container, mp3, input_root, output_dir
@@ -121,17 +133,17 @@ def _convert_file_mt(
 
 
 def convert_folder(
-    input_path,
-    prefered_bitrate,
-    file_container,
-    keep_files,
-    vbr,
-    config_common_types,
-    recursive,
-    mp3,
-    output_dir=None,
-    multi_threading=False,
-):
+    input_path: str,
+    prefered_bitrate: str,
+    file_container: str,
+    keep_files: bool,
+    vbr: str,
+    config_common_types: Sequence[str],
+    recursive: bool,
+    mp3: bool,
+    output_dir: str | None = None,
+    multi_threading: bool = False,
+) -> None:
     """For converting audio files in a folder."""
     files_to_convert = filter_out_dir_files(
         _collect_files(input_path, config_common_types, recursive), output_dir

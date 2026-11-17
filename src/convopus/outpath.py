@@ -3,7 +3,13 @@
 import os
 
 
-def build_output_path(input_root, input_file, output_dir, file_container, mp3):
+def build_output_path(
+    input_root: str,
+    input_file: str,
+    output_dir: str,
+    file_container: str,
+    mp3: bool,
+) -> str:
     """Build the output path for input_file under output_dir.
 
     The part of input_file below input_root is mirrored under output_dir,
@@ -21,7 +27,9 @@ def build_output_path(input_root, input_file, output_dir, file_container, mp3):
     return output_file
 
 
-def filter_out_dir_files(files_to_convert, output_dir):
+def filter_out_dir_files(
+    files_to_convert: list[str], output_dir: str | None
+) -> list[str]:
     """Drop files already inside output_dir from the conversion list.
 
     Prevents converting freshly created outputs when --out points inside
