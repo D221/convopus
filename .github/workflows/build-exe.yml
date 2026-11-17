@@ -29,8 +29,22 @@ jobs:
       - name: Build exe
         run: uv run --with pyinstaller pyinstaller build.spec --noconfirm --log-level WARN
 
+      - name: Install ffmpeg
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg --no-progress -y
+          }
+
+      # Catches missing imports and the frozen-multiprocessing hang, both of
+      # which a bare `--version` check would miss.
       - name: Smoke test
-        run: ./dist/convopus.exe --version
+        run: |
+          ./dist/convopus.exe --version
+          $dir = "smoke"
+          New-Item -ItemType Directory -Path $dir -Force | Out-Null
+          ffmpeg -v error -f lavfi -i "sine=frequency=440:duration=1" "$dir/a.wav" -y
+          ./dist/convopus.exe -k "$dir"
+          if (-not (Test-Path "$dir/a.opus")) { throw "exe produced no output" }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
