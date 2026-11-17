@@ -61,10 +61,15 @@ jobs:
 
       - name: Attach to release
         if: github.event_name == 'release'
+        # pwsh is the default shell on windows-latest; the zip is friendlier
+        # to download than a bare .exe and triggers fewer browser warnings.
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          version="${TAG#v}"
-          cp dist/convopus.exe "dist/convopus-${version}-windows-x64.exe"
-          gh release upload "$TAG" "dist/convopus-${version}-windows-x64.exe" --clobber
+          $version = $env:TAG -replace '^v', ''
+          $exe = "convopus-$version-windows-x64.exe"
+          Copy-Item dist/convopus.exe "dist/$exe"
+          Compress-Archive -Path "dist/$exe" -DestinationPath "dist/convopus-$version-windows-x64.zip"
+          gh release upload $env:TAG "dist/$exe" "dist/convopus-$version-windows-x64.zip" --clobber
