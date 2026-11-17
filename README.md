@@ -22,7 +22,7 @@ convopus is a Python CLI program for converting audio files and directories to [
 ## Requirements
 
 - [ffmpeg](https://ffmpeg.org/) installed and on your PATH
-- Python 3.10+
+- Python 3.11+
 
 ## Installation
 

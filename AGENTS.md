@@ -41,5 +41,5 @@ uvx pyinstaller build.spec   # -> dist/convopus.exe
 
 ## CI / release
 
-- Test workflow on every push/PR: ruff check + format check, ty typecheck, pytest with coverage — matrix {ubuntu, windows} × Python {3.10, 3.13}.
+- Test workflow on every push/PR: ruff check + format check, ty typecheck, pytest with coverage — matrix {ubuntu, windows} × Python {3.11, 3.14}.
 - Publishing to PyPI is automatic when a GitHub Release is published (`python-publish.yml` runs `python -m build` + twine upload). CodeQL scans pushes/PRs to main.

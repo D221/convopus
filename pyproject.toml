@@ -7,17 +7,17 @@ name = "convopus"
 dynamic = ["version"]
 description = "Python CLI program that converts directories of audio files to opus using ffmpeg"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "D221", email = "D221@airmail.cc" }]
 keywords = ["audio", "opus", "ffmpeg", "converter", "cli"]
 classifiers = [
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Operating System :: OS Independent",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
