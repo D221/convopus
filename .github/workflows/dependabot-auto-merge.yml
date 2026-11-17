@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   auto-merge:
+    name: auto-merge
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -49,9 +50,30 @@ jobs:
         id: checks
         if: steps.gate.outputs.merge == 'yes'
         run: |
-          # Give the workflows triggered by the PR a moment to register their checks
-          sleep 20
-          gh pr checks "$PR_URL" --watch --interval 30
+          set -euo pipefail
+          # This workflow's own check run is reported on the PR too, so it has to be
+          # excluded — waiting for it would deadlock (it only finishes after the merge).
+          self_check="auto-merge"
+          for _ in $(seq 1 90); do
+            sleep 20
+            checks=$(gh pr checks "$PR_URL" --json name,bucket 2>/dev/null || echo "[]")
+            others=$(echo "$checks" | jq -r --arg s "$self_check" '[.[] | select(.name != $s)]')
+            failed=$(echo "$others" | jq -r '[.[] | select(.bucket == "fail" or .bucket == "cancel") | .name] | join(", ")')
+            pending=$(echo "$others" | jq -r '[.[] | select(.bucket == "pending") | .name] | join(", ")')
+            count=$(echo "$others" | jq 'length')
+
+            if [ -n "$failed" ]; then
+              echo "checks failed: $failed"
+              exit 1
+            fi
+            if [ "$count" -gt 0 ] && [ -z "$pending" ]; then
+              echo "all $count checks passed"
+              exit 0
+            fi
+            echo "waiting: ${pending:-no checks reported yet}"
+          done
+          echo "timed out waiting for checks"
+          exit 1
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
