@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/D221/convopus/main/docs/logo.svg" width="120" alt="convopus logo">
+</p>
+
 # convopus
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/D221/convopus?label=Download)](https://github.com/D221/convopus/releases/latest)

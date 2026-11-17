@@ -1,0 +1,15 @@
+convopus logo — docs/logo.svg
+
+To the extent possible under law, the author has waived all copyright and
+related or neighbouring rights to the convopus logo. It is dedicated to the
+public domain under CC0 1.0 Universal:
+
+    https://creativecommons.org/publicdomain/zero/1.0/
+
+The mark is not derived from any third-party artwork. It is generated from a
+parametric equation — a Gaussian-windowed sine wave — by tools/make_logo.py:
+
+    y(t) = A · exp(-((t - 0.5)²) / (2σ²)) · sin(2π · cycles · t)
+
+Run `uv run python tools/make_logo.py` to regenerate it; edit the constants at
+the top of that file to change amplitude, frequency, stroke or colour.
