@@ -1,11 +1,3 @@
-# This workflow will upload a Python Package using Twine when a release is created
-# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 name: Upload Python Package
 
 on:
@@ -15,25 +7,33 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # OIDC token for PyPI trusted publishing and build provenance attestations
+      id-token: write
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v3
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
       with:
-        python-version: '3.x'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build
+        enable-cache: true
+
     - name: Build package
-      run: python -m build
+      run: uv build
+
+    # No user/password: authentication is via PyPI trusted publishing
+    # (Settings -> Publishing -> Add a new pending publisher on pypi.org).
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086
       with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+        attestations: true
