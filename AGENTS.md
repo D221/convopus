@@ -26,7 +26,7 @@ uv run ruff format src/ tests/
 uv run ty check src/ tests/
 
 # Windows exe build (spec file is intentionally not gitignored)
-uvx pyinstaller build.spec   # -> dist/convopus.exe
+uv run --with pyinstaller pyinstaller build.spec --noconfirm   # -> dist/convopus.exe
 ```
 
 ## Gotchas

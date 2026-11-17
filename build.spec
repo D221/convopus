@@ -4,8 +4,8 @@ block_cipher = None
 
 
 a = Analysis(
-    ['./src/convopus/main.py'],
-    pathex=[],
+    ['./src/convopus/__main__.py'],
+    pathex=['./src'],
     binaries=[],
     datas=[],
     hiddenimports=[],
