@@ -1,0 +1,58 @@
+# Changelog
+
+All notable changes to convopus are documented here.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- Windows builds in CI: a `convopus.exe` is attached to every GitHub release, with the CC0 app icon.
+- Dependabot keeps `uv.lock` and the GitHub Actions current; patch and minor bumps merge themselves once CI is green.
+- Logo and icon are generated from a wave equation by `tools/make_logo.py` / `tools/make_icon.py` and dedicated to the public domain under CC0.
+
+### Changed
+
+- Requires **Python 3.11+** — 3.10 reached end of life. Tested on 3.11 and 3.14.
+- CI cancels superseded runs, caps every job, and uses least-privilege workflow tokens.
+- PyPI releases authenticate with trusted publishing (OIDC) instead of a long-lived API token, and ship build attestations.
+- The frozen executable is smaller: OpenSSL and the unused compression modules are no longer bundled (10.3 MB → 6.8 MB).
+
+### Fixed
+
+- The frozen executable hung on folder conversions: the worker processes re-executed the entry point. `multiprocessing.freeze_support()` is now called.
+- `build.spec` pointed at a `main.py` that no longer existed, so the documented exe build failed.
+
+## [1.5.0] - 2026-09-26
+
+### Added
+
+- `-o` / `--out` writes converted files under a separate directory, mirroring the input structure.
+- Multiple input paths in a single run.
+- `python -m convopus` as an alternative entry point.
+- A pytest suite: unit tests for ffmpeg arguments, output paths, config and the CLI, plus integration tests that run real ffmpeg conversions.
+
+### Changed
+
+- Packaging moved to `pyproject.toml` with `uv` and a committed `uv.lock`; `setup.py` and `requirements.txt` are gone.
+- Configuration is a typed, frozen dataclass built on `platformdirs`, loaded through `CONVOPUS_CONFIG`, and repaired instead of failing: missing or invalid keys fall back to defaults with a warning.
+- The legacy `appdirs` roaming location is migrated automatically on first run.
+- Config is injected into the CLI rather than read at import time.
+- `app.py`/`app_mt.py` merged into `convert.py`; `main.py` and `genconf.py` renamed to `cli.py` and `config.py`.
+- CI runs ruff, ty and pytest on Ubuntu and Windows.
+- The vendored `ffpb` progress-bar helper is a proper subpackage.
+
+### Fixed
+
+- Progress-bar filenames on paths with mixed separators.
+
+## [1.4.2] - 2024-08-16
+
+### Added
+
+- Experimental MP3 output (`--mp3`): VBR gives V0, CBR gives 320k.
+
+[Unreleased]: https://github.com/D221/convopus/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/D221/convopus/compare/v1.4.2...v1.5.0
+[1.4.2]: https://github.com/D221/convopus/releases/tag/v1.4.2
