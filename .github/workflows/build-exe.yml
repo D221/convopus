@@ -11,9 +11,15 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch or PR supersedes this run
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 20
     permissions:
       # needed only to upload the asset when this runs for a release
       contents: write

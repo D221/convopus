@@ -7,6 +7,11 @@ on:
   pull_request_target:
     branches: [main]
 
+# A newer commit on the same PR supersedes the run
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
@@ -17,6 +22,7 @@ jobs:
     name: auto-merge
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Dependabot metadata
         id: metadata
