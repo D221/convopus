@@ -27,6 +27,10 @@ uv run ty check src/ tests/
 
 # Windows exe build (spec file is intentionally not gitignored)
 uv run --with pyinstaller pyinstaller build.spec --noconfirm   # -> dist/convopus.exe
+
+# Logo and app icon (re-run only when the mark changes; icon is CC0)
+uv run python tools/make_logo.py                                 # -> docs/logo.svg
+uv run --with cairosvg --with pillow python tools/make_icon.py   # -> docs/icon.ico
 ```
 
 ## Gotchas

@@ -48,6 +48,7 @@ exe = EXE(
     a.datas,
     [],
     name='convopus',
+    icon='docs/icon.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
