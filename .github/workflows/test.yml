@@ -37,6 +37,13 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
+      - name: Install ffmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg --no-progress -y
+          }
+
       - name: Lint (ruff)
         run: |
           uv run ruff check src/ tests/
