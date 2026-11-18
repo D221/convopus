@@ -41,9 +41,12 @@ uv run --with cairosvg --with pillow python tools/make_icon.py   # -> docs/icon.
 - **`--out` path logic is centralized** in `convopus/outpath.py` — `build_output_path` mirrors the input structure under the output dir, `filter_out_dir_files` keeps an out-dir nested inside a scanned tree from being re-converted. Both branches in `convert.py` use it; don't reimplement per path.
 - **`ffpb.main(argv=...)` prepends `"ffmpeg"` itself** — args exclude the binary name. The multiprocessing branch runs `subprocess` directly and must add it: `["ffmpeg"] + _ffmpeg_args(...) + ["-loglevel", "error"]`.
 - **Never isolate config in tests via APPDATA-style env vars** — on Windows, platformdirs resolves the real profile through the Win32 shell API and ignores them. The autouse `isolated_config` fixture uses the `CONVOPUS_CONFIG` override, which subprocesses inherit.
-- **ffmpeg won't overwrite existing outputs** — it prompts `[y/N]` (handled interactively on the sequential path via ffpb; the multiprocessing path errors on refusal). Pre-existing behavior, not a bug.
+- **ffmpeg won't overwrite existing outputs** — it prompts `[y/N]` (handled interactively on the sequential path via ffpb). Both paths treat a refusal as a failure: the original is kept and the run exits 1.
+- **Originals are only deleted after a successful conversion.** `convert_file`/`_convert_file_mt` raise `ConversionError` on a nonzero ffmpeg status, `convert_folder` returns the number of failed files (never aborting the batch), and `main()` exits 1 when anything failed. Add a test for any change to this path: a failed conversion deleting the source is unrecoverable.
+- **Convertible extensions are matched case-insensitively** (`SONG.FLAC` matches `.flac`), and `--out` filtering uses `os.path.normcase` so Windows path case does not defeat it.
+- **`-c/--container` is normalized** (`.ogg`, `ogg` and `.OGG` all work); empty `-c`/`-b` values are rejected by argparse.
 
 ## CI / release
 
-- Test workflow on every push/PR: ruff check + format check, ty typecheck, pytest with coverage — matrix {ubuntu, windows} × Python {3.11, 3.14}.
+- Test workflow on every push/PR: ruff check + format check, ty typecheck, pytest with coverage — matrix {ubuntu, windows} × Python {3.11, 3.14}. Coverage is gated at 80% (`[tool.coverage.report] fail_under`), and `tests/test_ci.py` fails when ffmpeg is missing in CI so integration tests cannot skip silently.
 - Publishing to PyPI is automatic when a GitHub Release is published (`python-publish.yml` runs `python -m build` + twine upload). CodeQL scans pushes/PRs to main.

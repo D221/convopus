@@ -28,6 +28,20 @@ convopus is a Python CLI program for converting audio files and directories to [
 - [ffmpeg](https://ffmpeg.org/) installed and on your PATH
 - Python 3.11+
 
+### Installing ffmpeg
+
+| Platform | Command | Download / notes |
+|---|---|---|
+| Windows | `winget install BtbN.FFmpeg.GPL.Shared` | Recommended: BtbN GPL **shared** build (master branch), easy to update with `winget upgrade`. Alternatives: `winget install Gyan.FFmpeg`, `scoop install ffmpeg`, `choco install ffmpeg`, or a manual build from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) / [BtbN](https://github.com/BtbN/FFmpeg-Builds/releases) (then add its `bin` folder to `PATH`) |
+| Linux (Debian/Ubuntu) | `sudo apt install ffmpeg` | Packages come from the distribution |
+| Linux (Fedora) | `sudo dnf install ffmpeg` | May need the [RPM Fusion](https://rpmfusion.org/) repositories |
+| Linux (Arch) | `sudo pacman -S ffmpeg` | |
+| Linux (Alpine) | `sudo apk add ffmpeg` | |
+| macOS | `brew install ffmpeg` | [Homebrew formula](https://formulae.brew.sh/formula/ffmpeg); MacPorts: `sudo port install ffmpeg` |
+| Android (Termux) | `pkg install ffmpeg` | |
+
+Official download page and source builds: <https://ffmpeg.org/download.html>. Verify the install with `ffmpeg -version` before running convopus. The GPL Windows build is fine here: convopus runs ffmpeg as a separate program, so its licence does not affect convopus or your converted files.
+
 ## Installation
 
 ```bash
@@ -56,6 +70,8 @@ convopus a.flac b/ c.wav               # multiple inputs in one run
 ```
 
 With `-o/--out DIRECTORY` converted files are written to that directory instead of next to the originals: the input structure is mirrored under it - subfolders are recreated when `-r/--recursive` is used, otherwise files are placed directly in the output directory.
+
+Originals are only deleted (`-dk`) after a successful conversion. Files that fail (corrupt input, unwritable output, refused overwrite) are reported, skipped, and kept; any failure makes convopus exit with status 1 so scripts can detect it.
 
 ```
 usage: convopus [-h] [-r] [--mp3] [-c CONTAINER] [--vbr {on,off}] [-b BITRATE]

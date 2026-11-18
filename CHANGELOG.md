@@ -4,6 +4,20 @@ All notable changes to convopus are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `-dk` no longer deletes an original when its conversion fails. Originals are removed only after ffmpeg reports success, on both the sequential and multiprocessing paths.
+- A missing or broken ffmpeg now exits with status 1 instead of 0, and a failed run exits 1 as well, so scripts can detect it.
+- `-c ogg` (no dot) and `.OGG` (uppercase) now produce `song.ogg` instead of `songogg` / `song.OGG`; empty `-c` and `-b` values are rejected.
+- Files with uppercase extensions (`SONG.FLAC`) are converted, and a `--out` directory nested inside the input tree is no longer re-converted when the path differs only in case.
+- One failing file no longer aborts a multiprocessing batch: remaining files continue and a summary is printed.
+
+### Changed
+
+- The test suite gates coverage at 80% and uses `--strict-markers`/`--strict-config`; CI installs ffmpeg on Windows and fails if it is missing, so integration tests can no longer skip silently.
+
 ## [1.6.0] - 2026-11-17
 
 ### Added
