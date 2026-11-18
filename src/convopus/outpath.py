@@ -38,9 +38,11 @@ def filter_out_dir_files(
     """
     if not output_dir:
         return files_to_convert
-    out_prefix = os.path.abspath(output_dir) + os.sep
+    # normcase makes the comparison match how the filesystem resolves paths:
+    # Windows is case-insensitive and uses "\\" as the separator.
+    out_prefix = os.path.normcase(os.path.abspath(output_dir)) + os.sep
     return [
         file_name
         for file_name in files_to_convert
-        if not os.path.abspath(file_name).startswith(out_prefix)
+        if not os.path.normcase(os.path.abspath(file_name)).startswith(out_prefix)
     ]

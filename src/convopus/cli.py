@@ -28,6 +28,24 @@ def check_ffmpeg() -> None:
         raise SystemExit(1) from None
 
 
+def _container(value: str) -> str:
+    """Normalize a container argument to a lowercase `.ext` extension."""
+    extension = value.strip().lower()
+    if not extension:
+        raise argparse.ArgumentTypeError("container must not be empty")
+    if not extension.startswith("."):
+        extension = f".{extension}"
+    return extension
+
+
+def _bitrate(value: str) -> str:
+    """Reject an empty bitrate argument."""
+    bitrate = value.strip()
+    if not bitrate:
+        raise argparse.ArgumentTypeError("bitrate must not be empty")
+    return bitrate
+
+
 def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
     """Function to parse command-line arguments"""
     # If user needs to view config file, just print and exit gracefully
@@ -58,6 +76,7 @@ def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
         "--container",
         help="Container for audio files (.ogg, .opus, .oga, .mkv, .webm)",
         default=config.container,
+        type=_container,
     )
     group.add_argument(
         "--vbr",
@@ -70,6 +89,7 @@ def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
         "--bitrate",
         help="Preferred bitrate for audio files",
         default=config.bitrate,
+        type=_bitrate,
     )
     group.add_argument(
         "-o",

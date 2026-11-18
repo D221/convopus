@@ -34,18 +34,23 @@ def _install_signal_handler() -> None:
 def _collect_files(
     input_path: str, config_common_types: Sequence[str], recursive: bool
 ) -> list[str]:
-    """List convertible audio files in or below input_path."""
+    """List convertible audio files in or below input_path.
+
+    Extensions are compared case-insensitively, so `SONG.FLAC` is picked up
+    by the default `.flac` entry.
+    """
+    extensions = tuple(extension.lower() for extension in config_common_types)
     if recursive:
         return [
             os.path.join(dirpath, filename)
             for dirpath, _, filenames in os.walk(input_path)
             for filename in filenames
-            if filename.endswith(tuple(config_common_types))
+            if filename.lower().endswith(extensions)
         ]
     return [
         os.path.join(input_path, filename)
         for filename in os.listdir(input_path)
-        if filename.endswith(tuple(config_common_types))
+        if filename.lower().endswith(extensions)
     ]
 
 
