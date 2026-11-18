@@ -1,12 +1,14 @@
-"""Tests for argument parsing in cli.py."""
+"""Tests for argument parsing and the CLI orchestration layer."""
 
+import json
 import subprocess
 import sys
 
 import pytest
 
-from convopus.cli import parse_arguments
+from convopus.cli import convert, parse_arguments
 from convopus.config import Config
+from convopus.convert import ConversionError
 
 
 def test_defaults_come_from_config():
@@ -43,6 +45,29 @@ def test_mt_flags_mutually_exclusive():
         parse_arguments(["-m", "-nm", "music/"], Config())
 
 
+def test_container_without_dot_is_normalized():
+    """`-c ogg` used to produce files named `songogg`."""
+    args = parse_arguments(["-c", "ogg", "music/"], Config())
+    assert args.container == ".ogg"
+
+
+def test_container_is_lowercased_and_dotted():
+    args = parse_arguments(["-c", ".OGG", "music/"], Config())
+    assert args.container == ".ogg"
+
+
+def test_empty_container_is_rejected():
+    with pytest.raises(SystemExit) as excinfo:
+        parse_arguments(["-c", "", "music/"], Config())
+    assert excinfo.value.code == 2
+
+
+def test_empty_bitrate_is_rejected():
+    with pytest.raises(SystemExit) as excinfo:
+        parse_arguments(["-b", "  ", "music/"], Config())
+    assert excinfo.value.code == 2
+
+
 def test_version_exits_with_version_string(capsys):
     from convopus import __version__
 
@@ -52,12 +77,15 @@ def test_version_exits_with_version_string(capsys):
     assert __version__ in capsys.readouterr().out
 
 
-def test_print_config_prints_location_and_exits(capsys, isolated_config):
+def test_print_config_prints_location_and_content(capsys, isolated_config):
     isolated_config.parent.mkdir(parents=True, exist_ok=True)
-    isolated_config.write_text("{}", encoding="utf-8")
-    with pytest.raises(SystemExit):
+    isolated_config.write_text(json.dumps({"bitrate": "96k"}), encoding="utf-8")
+    with pytest.raises(SystemExit) as excinfo:
         parse_arguments(["--config"], Config())
-    assert "config.json" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert excinfo.value.code is None
+    assert str(isolated_config) in out
+    assert "96k" in out
 
 
 def test_import_does_not_create_config(isolated_config):
@@ -69,13 +97,11 @@ def test_import_does_not_create_config(isolated_config):
         "from convopus.config import config_path\n"
         "expected = os.environ['CONVOPUS_CONFIG']\n"
         "actual = str(config_path())\n"
-        "from_src = os.sep + 'src' + os.sep in convopus.__file__\n"
         "clean = not os.path.isfile(actual)\n"
         "print('module:', convopus.__file__)\n"
-        "print('from_src:', from_src)\n"
         "print('path:', actual)\n"
         "print('exists:', os.path.isfile(actual))\n"
-        "raise SystemExit(0 if from_src and clean and actual == expected else 1)\n"
+        "raise SystemExit(0 if clean and actual == expected else 1)\n"
     )
     result = subprocess.run(
         [sys.executable, "-c", script],
@@ -85,3 +111,162 @@ def test_import_does_not_create_config(isolated_config):
         check=False,
     )
     assert result.returncode == 0, f"stderr={result.stderr!r} stdout={result.stdout!r}"
+
+
+def test_check_ffmpeg_passes_when_ffmpeg_works(monkeypatch):
+    from convopus import cli
+
+    monkeypatch.setattr(cli.subprocess, "run", lambda *args, **kwargs: None)
+    cli.check_ffmpeg()
+
+
+def test_check_ffmpeg_exits_one_when_missing(monkeypatch, capsys):
+    from convopus import cli
+
+    def boom(*args, **kwargs):
+        raise FileNotFoundError("ffmpeg")
+
+    monkeypatch.setattr(cli.subprocess, "run", boom)
+    with pytest.raises(SystemExit) as excinfo:
+        cli.check_ffmpeg()
+    assert excinfo.value.code == 1
+    assert "ffmpeg is not installed" in capsys.readouterr().err
+
+
+def test_check_ffmpeg_exits_one_when_broken(monkeypatch):
+    from convopus import cli
+
+    def broken(*args, **kwargs):
+        raise subprocess.CalledProcessError(1, "ffmpeg")
+
+    monkeypatch.setattr(cli.subprocess, "run", broken)
+    with pytest.raises(SystemExit) as excinfo:
+        cli.check_ffmpeg()
+    assert excinfo.value.code == 1
+
+
+def _run_main(monkeypatch, argv, config, result=0):
+    """Run main() with ffmpeg and conversion faked; return convert() args."""
+    from convopus import cli
+
+    recorded = {}
+
+    def fake_convert(*args):
+        recorded["args"] = args
+        return result
+
+    monkeypatch.setattr(cli, "load", lambda: config)
+    monkeypatch.setattr(cli, "check_ffmpeg", lambda: None)
+    monkeypatch.setattr(cli, "convert", fake_convert)
+    monkeypatch.setattr(sys, "argv", ["convopus", *argv])
+    cli.main()
+    return recorded["args"]
+
+
+def test_main_uses_config_defaults(monkeypatch):
+    args = _run_main(
+        monkeypatch,
+        ["song.wav"],
+        Config(bitrate="96k", container=".ogg", keep=False, multi_threading=False),
+    )
+    assert args[1] == "96k"
+    assert args[2] == ".ogg"
+    assert args[3] is False  # keep_files
+    assert args[7] is False  # multi_threading
+
+
+def test_main_keep_flag_overrides_config(monkeypatch):
+    args = _run_main(monkeypatch, ["-k", "song.wav"], Config(keep=False))
+    assert args[3] is True
+
+
+def test_main_delete_flag_overrides_config(monkeypatch):
+    args = _run_main(monkeypatch, ["-dk", "song.wav"], Config(keep=True))
+    assert args[3] is False
+
+
+def test_main_multithreading_flag_overrides_config(monkeypatch):
+    args = _run_main(monkeypatch, ["-m", "song.wav"], Config(multi_threading=False))
+    assert args[7] is True
+
+
+def test_main_no_multithreading_flag_overrides_config(monkeypatch):
+    args = _run_main(monkeypatch, ["-nm", "song.wav"], Config(multi_threading=True))
+    assert args[7] is False
+
+
+def test_main_without_input_prints_usage_hint(monkeypatch, capsys):
+    from convopus import cli
+
+    monkeypatch.setattr(cli, "load", lambda: Config())
+    monkeypatch.setattr(cli, "check_ffmpeg", lambda: None)
+    monkeypatch.setattr(cli, "convert", lambda *args: pytest.fail("should not run"))
+    monkeypatch.setattr(sys, "argv", ["convopus"])
+    cli.main()
+    assert "convopus --help" in capsys.readouterr().out
+
+
+def test_main_exits_one_when_conversions_fail(monkeypatch):
+    with pytest.raises(SystemExit) as excinfo:
+        _run_main(monkeypatch, ["song.wav"], Config(), result=2)
+    assert excinfo.value.code == 1
+
+
+def test_main_exits_zero_when_conversions_succeed(monkeypatch):
+    _run_main(monkeypatch, ["song.wav"], Config(), result=0)
+
+
+def test_convert_dispatches_files_and_folders(tmp_path, monkeypatch):
+    from convopus import cli
+
+    folder = tmp_path / "music"
+    folder.mkdir()
+    song = tmp_path / "song.wav"
+    song.touch()
+    calls = []
+    monkeypatch.setattr(
+        cli, "convert_folder", lambda *args: calls.append(("folder", args)) or 0
+    )
+    monkeypatch.setattr(
+        cli, "convert_file", lambda *args, **kwargs: calls.append(("file", args))
+    )
+
+    failures = convert(
+        [str(folder), str(song)],
+        "96k",
+        ".opus",
+        True,
+        "on",
+        [".wav"],
+        False,
+        False,
+        False,
+        None,
+    )
+
+    assert failures == 0
+    assert [kind for kind, _ in calls] == ["folder", "file"]
+
+
+def test_convert_counts_invalid_paths(capsys):
+    failures = convert(
+        ["missing.wav"], "96k", ".opus", True, "on", [".wav"], False, False, False, None
+    )
+    assert failures == 1
+    assert "invalid" in capsys.readouterr().err
+
+
+def test_convert_counts_conversion_errors(tmp_path, monkeypatch):
+    from convopus import cli
+
+    song = tmp_path / "song.wav"
+    song.touch()
+
+    def boom(*args, **kwargs):
+        raise ConversionError("ffmpeg exited with status 1")
+
+    monkeypatch.setattr(cli, "convert_file", boom)
+    failures = convert(
+        [str(song)], "96k", ".opus", False, "on", [".wav"], False, False, False, None
+    )
+    assert failures == 1

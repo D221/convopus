@@ -2,7 +2,9 @@
 
 import json
 
-from convopus.config import Config, config_path, load, write_default
+import pytest
+
+from convopus.config import Config, config_path, load, print_config, write_default
 
 
 def test_load_creates_missing_file_with_defaults(isolated_config):
@@ -169,3 +171,60 @@ def test_from_mapping_warns_on_bad_common_types(capsys):
     config = Config.from_mapping({"COMMONTYPES": "flac"})
     assert config.common_types == Config().common_types
     assert "common_types" in capsys.readouterr().err
+
+
+def test_from_mapping_coerces_boolean_forms():
+    assert Config.from_mapping({"keep": 0}).keep is False
+    assert Config.from_mapping({"keep": 1}).keep is True
+    assert Config.from_mapping({"keep": "yes"}).keep is True
+    assert Config.from_mapping({"multi_threading": "off"}).multi_threading is False
+    assert Config.from_mapping({"recursive": "ON"}).recursive is True
+
+
+def test_from_mapping_ignores_non_string_keys():
+    config = Config.from_mapping({1: "ignored", "bitrate": "64k"})
+    assert config.bitrate == "64k"
+
+
+def test_from_mapping_with_none_uses_defaults():
+    assert Config.from_mapping(None) == Config()
+
+
+def test_no_legacy_config_writes_default(monkeypatch, tmp_path):
+    new_dir = tmp_path / "new"
+    monkeypatch.setattr(
+        "convopus.config.user_config_path",
+        lambda *args, **kwargs: new_dir,
+    )
+    monkeypatch.delenv("CONVOPUS_CONFIG")
+
+    assert load() == Config()
+    assert (new_dir / "config.json").is_file()
+
+
+def test_corrupt_legacy_config_is_not_migrated(
+    monkeypatch, isolated_config, tmp_path, capsys
+):
+    legacy_dir = tmp_path / "legacy-roaming"
+    new_dir = tmp_path / "new-local"
+    monkeypatch.setattr(
+        "convopus.config.user_config_path",
+        lambda *args, **kwargs: legacy_dir if kwargs.get("roaming") else new_dir,
+    )
+    monkeypatch.delenv("CONVOPUS_CONFIG")
+    legacy_dir.mkdir(parents=True)
+    (legacy_dir / "config.json").write_text("{broken", encoding="utf-8")
+
+    assert load() == Config()
+    assert (new_dir / "config.json").is_file()
+    assert "migrating" not in capsys.readouterr().err
+
+
+def test_print_config_without_file_prints_path(isolated_config, capsys):
+    assert not isolated_config.is_file()
+
+    with pytest.raises(SystemExit) as excinfo:
+        print_config(isolated_config)
+
+    assert excinfo.value.code is None
+    assert str(isolated_config) in capsys.readouterr().out

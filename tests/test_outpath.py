@@ -1,5 +1,9 @@
 """Tests for --out output path mirroring."""
 
+import os
+
+import pytest
+
 from convopus.outpath import build_output_path, filter_out_dir_files
 
 
@@ -75,3 +79,23 @@ def test_filter_keeps_sibling_directory(tmp_path):
 def test_filter_passthrough_when_no_out_dir():
     files = ["a.wav", "b.wav"]
     assert filter_out_dir_files(files, None) is files
+
+
+@pytest.mark.skipif(os.name != "nt", reason="case-insensitive filesystems only")
+def test_filter_is_case_insensitive_on_windows(tmp_path):
+    """Windows resolves `OUT\\song.opus` and `Out\\song.opus` to one file."""
+    out = tmp_path / "Out"
+    out.mkdir()
+    weird = os.path.join(str(out).upper(), "song.opus")
+
+    assert filter_out_dir_files([weird], str(out)) == []
+
+
+def test_filter_drops_nested_subdirectories(tmp_path):
+    out = tmp_path / "out"
+    nested = out / "sub"
+    nested.mkdir(parents=True)
+    inside = nested / "song.opus"
+    inside.touch()
+
+    assert filter_out_dir_files([str(inside)], str(out)) == []
