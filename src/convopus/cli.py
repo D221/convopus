@@ -8,11 +8,11 @@ from collections.abc import Sequence
 
 from convopus import __version__
 from convopus.config import Config, load, print_config
-from convopus.convert import convert_file, convert_folder
+from convopus.convert import ConversionError, convert_file, convert_folder
 
 
 def check_ffmpeg() -> None:
-    """Function to check ffmpeg installation"""
+    """Exit with status 1 unless ffmpeg can be executed."""
     try:
         subprocess.run(
             ["ffmpeg", "-version"],
@@ -20,9 +20,12 @@ def check_ffmpeg() -> None:
             stderr=subprocess.DEVNULL,
             check=True,
         )
-    except OSError:
-        print("Error: ffmpeg is not installed or not in the system path.")
-        sys.exit()
+    except (OSError, subprocess.CalledProcessError):
+        print(
+            "Error: ffmpeg is not installed, not in the system path, or not usable.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from None
 
 
 def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
@@ -116,8 +119,7 @@ def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
 
     args = parser.parse_args(args=argv)
     if args.print_config:
-        print_config()
-        sys.exit(0)
+        print_config()  # prints and exits, never returns
     return args
 
 
@@ -132,11 +134,16 @@ def convert(
     multi_threading: bool,
     mp3: bool,
     out_dir: str | None,
-) -> None:
-    """Function that converts audio files into opus format"""
+) -> int:
+    """Function that converts audio files into opus format.
+
+    Returns the number of paths that failed (invalid input, or a conversion
+    error). Failures do not stop the remaining paths.
+    """
+    failures = 0
     for input_path in input_paths:
         if os.path.isdir(input_path):
-            convert_folder(
+            failures += convert_folder(
                 input_path,
                 bitrate,
                 container,
@@ -149,18 +156,24 @@ def convert(
                 multi_threading,
             )
         elif os.path.isfile(input_path):
-            convert_file(
-                input_path,
-                bitrate,
-                container,
-                keep_files,
-                vbr,
-                mp3,
-                input_root=os.path.dirname(input_path) or ".",
-                output_dir=out_dir,
-            )
+            try:
+                convert_file(
+                    input_path,
+                    bitrate,
+                    container,
+                    keep_files,
+                    vbr,
+                    mp3,
+                    input_root=os.path.dirname(input_path) or ".",
+                    output_dir=out_dir,
+                )
+            except (ConversionError, OSError) as error:
+                print(f"Failed to convert {input_path}: {error}", file=sys.stderr)
+                failures += 1
         else:
-            print(f"The path/file {input_path} is invalid!")
+            print(f"The path/file {input_path} is invalid!", file=sys.stderr)
+            failures += 1
+    return failures
 
 
 def main() -> None:
@@ -192,7 +205,7 @@ def main() -> None:
         multi_threading = config.multi_threading
 
     if args.input:
-        convert(
+        failures = convert(
             args.input,
             args.bitrate,
             args.container,
@@ -204,6 +217,8 @@ def main() -> None:
             args.mp3,
             args.out,
         )
+        if failures:
+            raise SystemExit(1)
     else:
         print("See convopus --help for usage")
 
