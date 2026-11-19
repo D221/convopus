@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-19
+
 ### Fixed
 
 - `-dk` no longer deletes an original when its conversion fails. Originals are removed only after ffmpeg reports success, on both the sequential and multiprocessing paths.
@@ -67,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Experimental MP3 output (`--mp3`): VBR gives V0, CBR gives 320k.
 
-[Unreleased]: https://github.com/D221/convopus/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/D221/convopus/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/D221/convopus/compare/v1.6.0...v1.6.1
+[1.6.0]: https://github.com/D221/convopus/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/D221/convopus/compare/v1.4.2...v1.5.0
 [1.4.2]: https://github.com/D221/convopus/releases/tag/v1.4.2
