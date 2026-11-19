@@ -12,7 +12,11 @@ from types import FrameType
 
 from tqdm import tqdm
 
-from convopus.outpath import build_output_path, filter_out_dir_files
+from convopus.outpath import (
+    build_output_path,
+    filter_out_dir_files,
+    path_key,
+)
 from ffpb_convopus import ffpb
 
 
@@ -245,12 +249,12 @@ def plan_conversions(
     conversions: list[tuple[str, str]] = []
     skipped: list[tuple[str, str]] = []
     claimed: set[str] = set()
-    input_keys = {os.path.normcase(os.path.abspath(file_name)) for file_name in files}
+    input_keys = {path_key(file_name) for file_name in files}
     for file_name in sorted(files):
         output_file = _resolve_output_file(
             file_name, file_container, mp3, input_root, output_dir
         )
-        output_key = os.path.normcase(os.path.abspath(output_file))
+        output_key = path_key(output_file)
         if output_key in input_keys:
             skipped.append(
                 (

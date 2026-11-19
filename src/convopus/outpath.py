@@ -1,6 +1,22 @@
 """Helpers for building output paths for the --out option."""
 
 import os
+import sys
+
+
+def path_key(path: str) -> str:
+    """Normalize a path for same-file comparisons.
+
+    `normcase` covers Windows (case-insensitive, backslash separators), but
+    it is a no-op on macOS even though the default filesystem there is also
+    case-insensitive. Fold case explicitly on macOS so `SONG.WAV` and
+    `SONG.wav` are never treated as different files; on the rare
+    case-sensitive APFS volume this only makes the guards more cautious.
+    """
+    key = os.path.normcase(os.path.abspath(path))
+    if sys.platform == "darwin":
+        key = key.casefold()
+    return key
 
 
 def build_output_path(
@@ -38,11 +54,11 @@ def filter_out_dir_files(
     """
     if not output_dir:
         return files_to_convert
-    # normcase makes the comparison match how the filesystem resolves paths:
-    # Windows is case-insensitive and uses "\\" as the separator.
-    out_prefix = os.path.normcase(os.path.abspath(output_dir)) + os.sep
+    # path_key matches how the filesystem resolves paths: Windows and macOS
+    # are case-insensitive, and Windows uses "\\" as the separator.
+    out_prefix = path_key(output_dir) + os.sep
     return [
         file_name
         for file_name in files_to_convert
-        if not os.path.normcase(os.path.abspath(file_name)).startswith(out_prefix)
+        if not path_key(file_name).startswith(out_prefix)
     ]

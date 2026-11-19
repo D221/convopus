@@ -2,6 +2,7 @@
 
 import os
 import signal
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -470,7 +471,12 @@ def test_plan_conversions_detects_output_collisions(tmp_path, capsys):
     assert "Skipped 1 file:" in capsys.readouterr().out
 
 
+@pytest.mark.skipif(
+    sys.platform not in ("win32", "darwin"),
+    reason="Linux filesystems really do distinguish SONG.WAV from SONG.wav",
+)
 def test_plan_conversions_compares_paths_case_insensitively(tmp_path):
+    """Windows and macOS resolve `SONG.WAV` and `SONG.wav` to one file."""
     from convopus.convert import plan_conversions
 
     song = tmp_path / "SONG.WAV"

@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Same-file comparisons now fold case on macOS: default APFS is case-insensitive, so `SONG.WAV` and `SONG.wav` are one file there. Previously `-c wav` on a `.WAV` input, `--skip-existing`, and the `--out` filter could treat that file as a different path (and `-y` could overwrite the source). Linux, whose filesystems really are case-sensitive, keeps them distinct.
 - The failure summary uses correct grammar (`1 file failed`, not `1 file(s) failed`).
 
 ## [1.6.1] - 2026-11-19

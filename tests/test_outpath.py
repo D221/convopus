@@ -4,7 +4,8 @@ import os
 
 import pytest
 
-from convopus.outpath import build_output_path, filter_out_dir_files
+from convopus import outpath
+from convopus.outpath import build_output_path, filter_out_dir_files, path_key
 
 
 def test_mirrors_subdirectory_structure(tmp_path):
@@ -84,6 +85,24 @@ def test_filter_passthrough_when_no_out_dir():
 @pytest.mark.skipif(os.name != "nt", reason="case-insensitive filesystems only")
 def test_filter_is_case_insensitive_on_windows(tmp_path):
     """Windows resolves `OUT\\song.opus` and `Out\\song.opus` to one file."""
+    out = tmp_path / "Out"
+    out.mkdir()
+    weird = os.path.join(str(out).upper(), "song.opus")
+
+    assert filter_out_dir_files([weird], str(out)) == []
+
+
+@pytest.mark.skipif(os.name == "nt", reason="normcase already folds case here")
+def test_path_key_folds_case_on_macos(tmp_path, monkeypatch):
+    """Default macOS filesystems are case-insensitive, unlike normcase."""
+    monkeypatch.setattr(outpath.sys, "platform", "darwin")
+
+    assert path_key(str(tmp_path / "Song.WAV")) == path_key(str(tmp_path / "song.wav"))
+
+
+@pytest.mark.skipif(os.name == "nt", reason="normcase already folds case here")
+def test_filter_is_case_insensitive_on_macos(tmp_path, monkeypatch):
+    monkeypatch.setattr(outpath.sys, "platform", "darwin")
     out = tmp_path / "Out"
     out.mkdir()
     weird = os.path.join(str(out).upper(), "song.opus")
