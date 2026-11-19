@@ -37,7 +37,7 @@ Homepage = "https://github.com/D221/convopus"
 convopus = "convopus:main"
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-cov", "ruff", "ty"]
+dev = ["pytest>=8", "pytest-cov", "pytest-timeout", "ruff", "ty"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
@@ -55,6 +55,7 @@ version = { attr = "convopus.__version__" }
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --strict-config"
 filterwarnings = ["error::SyntaxWarning"]
+timeout = 300
 markers = [
   "integration: end-to-end tests that run real ffmpeg conversions",
 ]
@@ -62,8 +63,9 @@ markers = [
 [tool.coverage.run]
 branch = true
 source = ["convopus"]
-# __main__.py only runs in the subprocess entry point; coverage cannot see it.
-omit = ["src/convopus/__main__.py"]
+# Subprocess measurement (python -m convopus, pool workers) writes numbered
+# data files when COVERAGE_PROCESS_START is set; combine them before reporting.
+parallel = true
 
 [tool.coverage.report]
 fail_under = 80

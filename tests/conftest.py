@@ -1,6 +1,25 @@
 """Shared fixtures for the convopus test suite."""
 
+import os
+from pathlib import Path
+
 import pytest
+
+
+def pytest_configure(config):
+    """Measure code that runs in subprocesses, but only when coverage is on.
+
+    `python -m convopus` and the multiprocessing workers are separate
+    interpreters; coverage's .pth hook starts a tracer in them when
+    COVERAGE_PROCESS_START points at a config, and pytest-cov combines the
+    numbered data files at the end of the run.
+    """
+    if config.getoption("cov_source", default=None) and (
+        "COVERAGE_PROCESS_START" not in os.environ
+    ):
+        os.environ["COVERAGE_PROCESS_START"] = str(
+            Path(config.rootpath) / "pyproject.toml"
+        )
 
 
 @pytest.fixture(autouse=True)

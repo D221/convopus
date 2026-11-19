@@ -13,9 +13,9 @@ uv run convopus <file-or-dir>
 uv run python -m convopus <file-or-dir>   # also works (__main__.py)
 
 # Tests — `integration` marker = real ffmpeg conversions, auto-skipped without ffmpeg
-uv run pytest                        # everything (~3 s)
+uv run pytest                        # everything (~5 s)
 uv run pytest -m "not integration"   # fast unit-only loop (<2 s)
-uv run pytest --cov                  # with coverage report
+uv run pytest --cov                  # coverage, including subprocess runs (see below)
 
 # Manual verification of a change against real audio
 uv run convopus -k -nm -b 96k <some .flac/.wav file>
@@ -50,5 +50,6 @@ uv run --with cairosvg --with pillow python tools/make_icon.py   # -> docs/icon.
 
 ## CI / release
 
-- Test workflow on every push/PR: ruff check + format check, ty typecheck, pytest with coverage — matrix {ubuntu, windows} × Python {3.11, 3.14}. Coverage is gated at 80% (`[tool.coverage.report] fail_under`), and `tests/test_ci.py` fails when ffmpeg is missing in CI so integration tests cannot skip silently.
+- Test workflow on every push/PR: ruff check + format check, ty typecheck, pytest with coverage — matrix {ubuntu, windows, macOS} × Python {3.11, 3.14}. Coverage is gated at 80% (`[tool.coverage.report] fail_under`), and `tests/test_ci.py` fails when ffmpeg is missing in CI so integration tests cannot skip silently.
+- `tests/conftest.py` sets `COVERAGE_PROCESS_START` when `--cov` is used, so `python -m convopus` and the multiprocessing workers are measured too (coverage's installed `.pth` hook starts them; `[tool.coverage.run] parallel` keeps their data files separate and pytest-cov combines them). `pytest-timeout` aborts any single test after 300 s.
 - Publishing to PyPI is automatic when a GitHub Release is published (`python-publish.yml` runs `python -m build` + twine upload). CodeQL scans pushes/PRs to main.

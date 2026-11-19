@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--version` prints `convopus <version>` instead of the interpreter and script path.
 - README troubleshooting table and exit-code reference.
 
+### Changed
+
+- CI now also runs on macOS (`brew install ffmpeg` when the runner has none), so the documented macOS support is tested.
+- Coverage now counts code run in subprocesses (`python -m convopus`, multiprocessing workers), so `__main__.py` is measured instead of omitted; a per-test timeout of 300 s stops a hung ffmpeg from stalling CI.
+
 ### Fixed
 
 - The failure summary uses correct grammar (`1 file failed`, not `1 file(s) failed`).
