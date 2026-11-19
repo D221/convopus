@@ -223,6 +223,111 @@ def _probe_codec(path):
     return result.stdout.strip()
 
 
+def test_skip_existing_leaves_an_existing_output_untouched(tmp_path, make_wav):
+    song = make_wav("song.wav")
+    existing = tmp_path / "song.opus"
+    existing.write_bytes(b"do not touch")
+
+    failures = convert_folder(
+        str(tmp_path),
+        "96k",
+        ".opus",
+        True,
+        "on",
+        [".wav"],
+        False,
+        False,
+        None,
+        False,
+        None,
+        False,
+        False,
+        True,
+    )
+
+    assert failures == 0
+    assert existing.read_bytes() == b"do not touch"
+    assert song.is_file()
+
+
+def test_cli_overwrite_replaces_an_existing_output(tmp_path, make_wav):
+    song = make_wav("song.wav")
+    (tmp_path / "song.opus").write_bytes(b"not a real opus file")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "convopus", "-nm", "-k", "-y", str(song)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert _probe_codec(tmp_path / "song.opus") == "opus"
+
+
+def _encode(source, target):
+    """Encode source into target with ffmpeg; skip when that codec is missing."""
+    result = subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", str(source), str(target)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    if result.returncode != 0:
+        pytest.skip(f"ffmpeg cannot write {target.suffix} here: {result.stderr}")
+
+
+def test_cli_skips_colliding_outputs(tmp_path, make_wav):
+    """a.wav and a.flac both map to a.opus; only one conversion may run."""
+    make_wav("a.wav", parent=tmp_path)
+    _encode(tmp_path / "a.wav", tmp_path / "a.flac")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "convopus", "-nm", "-k", str(tmp_path)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped 1 file" in result.stdout
+    assert "another input" in result.stdout
+    assert _probe_codec(tmp_path / "a.opus") == "opus"
+
+
+def test_cli_container_never_overwrites_an_input(tmp_path, make_wav):
+    """`-c wav` on a.wav + a.flac would replace a.wav with a.flac's audio."""
+    make_wav("a.wav", parent=tmp_path)
+    _encode(tmp_path / "a.wav", tmp_path / "a.flac")
+    wav_bytes = (tmp_path / "a.wav").read_bytes()
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "convopus",
+            "-nm",
+            "-k",
+            "-c",
+            "wav",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped 2 files" in result.stdout
+    assert "would overwrite an input file" in result.stdout
+    assert (tmp_path / "a.wav").read_bytes() == wav_bytes
+    assert (tmp_path / "a.flac").is_file()
+
+
 def test_opus_output_really_is_opus(tmp_path, make_wav):
     song = make_wav("song.wav")
 

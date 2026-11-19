@@ -8,7 +8,13 @@ from collections.abc import Sequence
 
 from convopus import __version__
 from convopus.config import Config, load, print_config
-from convopus.convert import ConversionError, convert_file, convert_folder
+from convopus.convert import (
+    ConversionError,
+    convert_file,
+    convert_folder,
+    plan_conversions,
+    report_skipped,
+)
 
 
 def check_ffmpeg() -> None:
@@ -125,6 +131,19 @@ def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
         help="No progress bars (useful in logs and scripts)",
     )
 
+    group_existing = group.add_mutually_exclusive_group(required=False)
+    group_existing.add_argument(
+        "-y",
+        "--overwrite",
+        action="store_true",
+        help="Replace existing output files without asking",
+    )
+    group_existing.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip files whose output already exists",
+    )
+
     action_group_keep = parser.add_mutually_exclusive_group(required=False)
     action_group_keep.add_argument(
         "-k",
@@ -166,6 +185,10 @@ def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
     args = parser.parse_args(args=argv)
     if args.jobs is not None and args.no_multithreading:
         parser.error("--jobs cannot be combined with --no-multithreading")
+    # An explicit existing-file flag overrides both config keys.
+    if not args.overwrite and not args.skip_existing:
+        args.overwrite = config.overwrite
+        args.skip_existing = config.skip_existing
     if args.print_config:
         print_config()  # prints and exits, never returns
     return args
@@ -184,6 +207,8 @@ def convert(
     out_dir: str | None,
     jobs: int | None = None,
     quiet: bool = False,
+    overwrite: bool = False,
+    skip_existing: bool = False,
 ) -> int:
     """Function that converts audio files into opus format.
 
@@ -206,22 +231,32 @@ def convert(
                 multi_threading,
                 jobs,
                 quiet,
+                overwrite,
+                skip_existing,
             )
         elif os.path.isfile(input_path):
-            try:
-                convert_file(
-                    input_path,
-                    bitrate,
-                    container,
-                    keep_files,
-                    vbr,
-                    mp3,
-                    input_root=os.path.dirname(input_path) or ".",
-                    output_dir=out_dir,
-                )
-            except (ConversionError, OSError) as error:
-                print(f"Failed to convert {input_path}: {error}", file=sys.stderr)
-                failures += 1
+            input_root = os.path.dirname(input_path) or "."
+            conversions, skipped = plan_conversions(
+                [input_path], container, mp3, input_root, out_dir, skip_existing
+            )
+            report_skipped(skipped)
+            for file_name, output_file in conversions:
+                try:
+                    convert_file(
+                        file_name,
+                        bitrate,
+                        container,
+                        keep_files,
+                        vbr,
+                        mp3,
+                        input_root=input_root,
+                        output_dir=out_dir,
+                        overwrite=overwrite,
+                        output_file=output_file,
+                    )
+                except (ConversionError, OSError) as error:
+                    print(f"Failed to convert {file_name}: {error}", file=sys.stderr)
+                    failures += 1
         else:
             print(f"The path/file {input_path} is invalid!", file=sys.stderr)
             failures += 1
@@ -273,6 +308,8 @@ def main() -> None:
             args.out,
             args.jobs,
             args.quiet,
+            args.overwrite,
+            args.skip_existing,
         )
         if failures:
             raise SystemExit(1)

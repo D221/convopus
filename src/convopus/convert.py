@@ -105,6 +105,32 @@ def _ffmpeg_args(
     return [arg for arg in args if arg is not None]
 
 
+def _run_ffmpeg(
+    file_name: str,
+    output_file: str,
+    prefered_bitrate: str,
+    vbr: str,
+    mp3: bool,
+    overwrite: bool,
+    progress: bool,
+) -> None:
+    """Run one ffmpeg conversion and return only on success.
+
+    `progress` selects ffpb (per-file bar) or a plain subprocess (pool and
+    --quiet); `overwrite` passes -y so ffmpeg never prompts.
+    """
+    args = _ffmpeg_args(file_name, output_file, prefered_bitrate, vbr, mp3)
+    overwrite_args = ["-y"] if overwrite else []
+    if progress:
+        returncode = ffpb.main(argv=overwrite_args + args)
+    else:
+        command = ["ffmpeg"] + overwrite_args + args + ["-loglevel", "error"]
+        returncode = subprocess.run(command, check=False).returncode
+
+    if returncode != 0:
+        raise ConversionError(f"ffmpeg exited with status {returncode}; original kept")
+
+
 def convert_file(
     file_name: str,
     prefered_bitrate: str,
@@ -114,22 +140,20 @@ def convert_file(
     mp3: bool,
     input_root: str | None = None,
     output_dir: str | None = None,
+    overwrite: bool = False,
+    output_file: str | None = None,
 ) -> None:
     """For converting a single audio file (sequential, with ffpb progress).
 
     The original is only deleted after ffmpeg reports success: a failed
     conversion (corrupt input, unwritable output, refused overwrite) keeps
-    the source file and raises ConversionError.
+    the source file and raises ConversionError. A precomputed `output_file`
+    (from plan_conversions) skips path resolution.
     """
-    output_file = _resolve_output_file(
+    target = output_file or _resolve_output_file(
         file_name, file_container, mp3, input_root, output_dir
     )
-    returncode = ffpb.main(
-        argv=_ffmpeg_args(file_name, output_file, prefered_bitrate, vbr, mp3)
-    )
-
-    if returncode != 0:
-        raise ConversionError(f"ffmpeg exited with status {returncode}; original kept")
+    _run_ffmpeg(file_name, target, prefered_bitrate, vbr, mp3, overwrite, progress=True)
     if not keep_files:
         os.remove(file_name)
 
@@ -143,56 +167,52 @@ def _convert_file_direct(
     mp3: bool,
     input_root: str | None = None,
     output_dir: str | None = None,
+    overwrite: bool = False,
+    output_file: str | None = None,
 ) -> None:
     """Convert one file with subprocess (pool worker or --quiet sequential).
 
     Same contract as convert_file: raise on failure and keep the original.
     """
-    output_file = _resolve_output_file(
+    target = output_file or _resolve_output_file(
         file_name, file_container, mp3, input_root, output_dir
     )
-    ffmpeg_cmd = (
-        ["ffmpeg"]
-        + _ffmpeg_args(file_name, output_file, prefered_bitrate, vbr, mp3)
-        + ["-loglevel", "error"]
+    _run_ffmpeg(
+        file_name, target, prefered_bitrate, vbr, mp3, overwrite, progress=False
     )
-    result = subprocess.run(ffmpeg_cmd, check=False)
-    if result.returncode != 0:
-        raise ConversionError(
-            f"ffmpeg exited with status {result.returncode}; original kept"
-        )
     if not keep_files:
         os.remove(file_name)
 
 
 def _mt_worker(
-    file_name: str, convert_func: Callable[[str], None]
+    item: tuple[str, str], convert_func: Callable[..., None]
 ) -> tuple[str, str | None]:
     """Run one pool conversion, reporting failures instead of raising.
 
     A failing file must not abort the whole batch, so the error travels back
     to the parent as data (the worker process cannot be resumed anyway).
     """
+    file_name, output_file = item
     try:
-        convert_func(file_name)
+        convert_func(file_name, output_file=output_file)
     except (ConversionError, OSError) as error:
         return file_name, str(error)
     return file_name, None
 
 
 def _convert_all_mt(
-    convert_func: Callable[[str], None],
-    files: Sequence[str],
+    convert_func: Callable[..., None],
+    items: Sequence[tuple[str, str]],
     jobs: int | None = None,
     quiet: bool = False,
 ) -> list[tuple[str, str]]:
-    """Convert files in a process pool, returning (file, error) failures."""
+    """Convert planned (input, output) items in a pool; return failures."""
     failures: list[tuple[str, str]] = []
     pool = Pool(jobs or cpu_count())
     try:
-        with _total_progress_bar(len(files), disabled=quiet) as pbar:
+        with _total_progress_bar(len(items), disabled=quiet) as pbar:
             for file_name, error in pool.imap_unordered(
-                partial(_mt_worker, convert_func=convert_func), files
+                partial(_mt_worker, convert_func=convert_func), items
             ):
                 if error is not None:
                     failures.append((file_name, error))
@@ -205,6 +225,62 @@ def _convert_all_mt(
     finally:
         pool.join()
     return failures
+
+
+def plan_conversions(
+    files: Sequence[str],
+    file_container: str,
+    mp3: bool,
+    input_root: str | None,
+    output_dir: str | None,
+    skip_existing: bool,
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """Split files into planned (input, output) pairs and skipped files.
+
+    Guards that always apply: an output that would replace an input file, or
+    that another input already produces, is skipped rather than silently
+    destroying a source or a sibling's result. With `skip_existing`, files
+    whose output is already on disk are skipped too.
+    """
+    conversions: list[tuple[str, str]] = []
+    skipped: list[tuple[str, str]] = []
+    claimed: set[str] = set()
+    input_keys = {os.path.normcase(os.path.abspath(file_name)) for file_name in files}
+    for file_name in sorted(files):
+        output_file = _resolve_output_file(
+            file_name, file_container, mp3, input_root, output_dir
+        )
+        output_key = os.path.normcase(os.path.abspath(output_file))
+        if output_key in input_keys:
+            skipped.append(
+                (
+                    file_name,
+                    f"output {output_file} would overwrite an input file",
+                )
+            )
+        elif skip_existing and os.path.isfile(output_file):
+            skipped.append((file_name, f"output {output_file} already exists"))
+        elif output_key in claimed:
+            skipped.append(
+                (
+                    file_name,
+                    f"output {output_file} is already produced by another input",
+                )
+            )
+        else:
+            claimed.add(output_key)
+            conversions.append((file_name, output_file))
+    return conversions, skipped
+
+
+def report_skipped(skipped: Sequence[tuple[str, str]]) -> None:
+    """Print one line per skipped file on stdout."""
+    if not skipped:
+        return
+    noun = "file" if len(skipped) == 1 else "files"
+    print(f"Skipped {len(skipped)} {noun}:")
+    for file_name, reason in skipped:
+        print(f"  {file_name}: {reason}")
 
 
 def _report_failures(failures: Sequence[tuple[str, str]]) -> None:
@@ -230,13 +306,16 @@ def convert_folder(
     multi_threading: bool = False,
     jobs: int | None = None,
     quiet: bool = False,
+    overwrite: bool = False,
+    skip_existing: bool = False,
 ) -> int:
     """For converting audio files in a folder.
 
     Returns the number of files that failed to convert. Failures do not stop
     the batch, and originals are only deleted after a successful conversion.
     `quiet` replaces the per-file ffpb bars with the direct ffmpeg runner and
-    disables the total bar; `jobs` caps the worker pool.
+    disables the total bar; `jobs` caps the worker pool; `overwrite` lets
+    ffmpeg replace existing outputs, and `skip_existing` leaves them alone.
     """
     files_to_convert = filter_out_dir_files(
         _collect_files(input_path, config_common_types, recursive), output_dir
@@ -244,6 +323,18 @@ def convert_folder(
 
     if not files_to_convert:
         print("No files to convert")
+        return 0
+
+    conversions, skipped = plan_conversions(
+        files_to_convert,
+        file_container,
+        mp3,
+        input_path,
+        output_dir,
+        skip_existing,
+    )
+    report_skipped(skipped)
+    if not conversions:
         return 0
 
     _install_signal_handler()
@@ -258,12 +349,13 @@ def convert_folder(
             mp3=mp3,
             input_root=input_path,
             output_dir=output_dir,
+            overwrite=overwrite,
         )
-        failures = _convert_all_mt(convert_func, sorted(files_to_convert), jobs, quiet)
+        failures = _convert_all_mt(convert_func, conversions, jobs, quiet)
     else:
         convert_func = _convert_file_direct if quiet else convert_file
-        with _total_progress_bar(len(files_to_convert), disabled=quiet) as pbar:
-            for idx, input_file in enumerate(sorted(files_to_convert)):
+        with _total_progress_bar(len(conversions), disabled=quiet) as pbar:
+            for idx, (input_file, output_file) in enumerate(conversions):
                 try:
                     convert_func(
                         file_name=input_file,
@@ -274,10 +366,12 @@ def convert_folder(
                         mp3=mp3,
                         input_root=input_path,
                         output_dir=output_dir,
+                        overwrite=overwrite,
+                        output_file=output_file,
                     )
                 except (ConversionError, OSError) as error:
                     failures.append((input_file, str(error)))
-                pbar.postfix = f"{idx + 1}/{len(files_to_convert)}"
+                pbar.postfix = f"{idx + 1}/{len(conversions)}"
                 pbar.update(1)
 
     _report_failures(failures)

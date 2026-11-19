@@ -99,6 +99,8 @@ class Config:
     recursive: bool = False
     multi_threading: bool = True
     common_types: tuple[str, ...] = _COMMON_TYPES
+    overwrite: bool = False
+    skip_existing: bool = False
 
     @classmethod
     def from_mapping(cls, raw: object) -> Config:
@@ -127,16 +129,39 @@ class Config:
         if common_types is None:
             common_types = data.pop("commontypes", None)
 
+        overwrite = _as_bool(
+            "overwrite", data.get("overwrite", base.overwrite), base.overwrite
+        )
+        skip_existing = _as_bool(
+            "skip_existing",
+            data.get("skip_existing", base.skip_existing),
+            base.skip_existing,
+        )
+        if overwrite and skip_existing:
+            _warn("overwrite and skip_existing are both true; skipping is disabled")
+            skip_existing = False
+
         return cls(
-            bitrate=_as_bitrate(data.get("bitrate"), base.bitrate),
-            container=_as_extension(data.get("container"), base.container),
-            keep=_as_bool("keep", data.get("keep"), base.keep),
-            vbr=_as_vbr(data.get("vbr"), base.vbr),
-            recursive=_as_bool("recursive", data.get("recursive"), base.recursive),
-            multi_threading=_as_bool(
-                "multi_threading", data.get("multi_threading"), base.multi_threading
+            bitrate=_as_bitrate(data.get("bitrate", base.bitrate), base.bitrate),
+            container=_as_extension(
+                data.get("container", base.container), base.container
             ),
-            common_types=_as_common_types(common_types, base.common_types),
+            keep=_as_bool("keep", data.get("keep", base.keep), base.keep),
+            vbr=_as_vbr(data.get("vbr", base.vbr), base.vbr),
+            recursive=_as_bool(
+                "recursive", data.get("recursive", base.recursive), base.recursive
+            ),
+            multi_threading=_as_bool(
+                "multi_threading",
+                data.get("multi_threading", base.multi_threading),
+                base.multi_threading,
+            ),
+            common_types=_as_common_types(
+                common_types if common_types is not None else base.common_types,
+                base.common_types,
+            ),
+            overwrite=overwrite,
+            skip_existing=skip_existing,
         )
 
 

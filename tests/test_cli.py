@@ -107,6 +107,39 @@ def test_quiet_is_parsed():
     assert parse_arguments(["-q", "music/"], Config()).quiet is True
 
 
+def test_overwrite_flag_is_parsed():
+    assert parse_arguments(["-y", "music/"], Config()).overwrite is True
+
+
+def test_skip_existing_flag_is_parsed():
+    args = parse_arguments(["--skip-existing", "music/"], Config())
+    assert args.skip_existing is True
+
+
+def test_overwrite_and_skip_existing_are_mutually_exclusive():
+    with pytest.raises(SystemExit) as excinfo:
+        parse_arguments(["-y", "--skip-existing", "music/"], Config())
+    assert excinfo.value.code == 2
+
+
+def test_existing_file_policy_defaults_come_from_config():
+    args = parse_arguments(["music/"], Config(skip_existing=True))
+    assert args.overwrite is False
+    assert args.skip_existing is True
+
+
+def test_overwrite_flag_overrides_config_skip_existing():
+    args = parse_arguments(["-y", "music/"], Config(skip_existing=True))
+    assert args.overwrite is True
+    assert args.skip_existing is False
+
+
+def test_skip_existing_flag_overrides_config_overwrite():
+    args = parse_arguments(["--skip-existing", "music/"], Config(overwrite=True))
+    assert args.overwrite is False
+    assert args.skip_existing is True
+
+
 def test_print_config_prints_location_and_content(capsys, isolated_config):
     isolated_config.parent.mkdir(parents=True, exist_ok=True)
     isolated_config.write_text(json.dumps({"bitrate": "96k"}), encoding="utf-8")
@@ -238,6 +271,16 @@ def test_main_passes_quiet(monkeypatch):
     assert args[11] is True
 
 
+def test_main_passes_overwrite(monkeypatch):
+    args = _run_main(monkeypatch, ["-y", "song.wav"], Config())
+    assert args[12] is True
+
+
+def test_main_passes_skip_existing(monkeypatch):
+    args = _run_main(monkeypatch, ["--skip-existing", "song.wav"], Config())
+    assert args[13] is True
+
+
 def test_main_without_input_prints_usage_hint(monkeypatch, capsys):
     from convopus import cli
 
@@ -313,3 +356,70 @@ def test_convert_counts_conversion_errors(tmp_path, monkeypatch):
         [str(song)], "96k", ".opus", False, "on", [".wav"], False, False, False, None
     )
     assert failures == 1
+
+
+def test_convert_single_file_uses_planned_output(tmp_path, monkeypatch):
+    from convopus import cli
+
+    song = tmp_path / "song.wav"
+    song.touch()
+    seen = {}
+
+    def fake_convert(file_name, *args, **kwargs):
+        seen["file_name"] = file_name
+        seen["output_file"] = kwargs["output_file"]
+        seen["overwrite"] = kwargs["overwrite"]
+
+    monkeypatch.setattr(cli, "convert_file", fake_convert)
+
+    failures = convert(
+        [str(song)],
+        "96k",
+        ".opus",
+        True,
+        "on",
+        [".wav"],
+        False,
+        False,
+        False,
+        None,
+        None,
+        False,
+        True,
+    )
+
+    assert failures == 0
+    assert seen == {
+        "file_name": str(song),
+        "output_file": str(tmp_path / "song.opus"),
+        "overwrite": True,
+    }
+
+
+def test_convert_single_file_skip_existing(tmp_path, monkeypatch, capsys):
+    from convopus import cli
+
+    song = tmp_path / "song.wav"
+    song.touch()
+    (tmp_path / "song.opus").touch()
+    monkeypatch.setattr(cli, "convert_file", lambda *a, **k: pytest.fail("converted"))
+
+    failures = convert(
+        [str(song)],
+        "96k",
+        ".opus",
+        True,
+        "on",
+        [".wav"],
+        False,
+        False,
+        False,
+        None,
+        None,
+        False,
+        False,
+        True,
+    )
+
+    assert failures == 0
+    assert "already exists" in capsys.readouterr().out

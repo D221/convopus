@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `-j/--jobs N` caps the multiprocessing pool (and implies `-m`); `-q/--quiet` disables progress bars for logs and scripts.
+- `-y/--overwrite` replaces existing output files without the interactive `[y/N]` prompt; `--skip-existing` leaves already-converted files alone. Both are also available as `overwrite` / `skip_existing` in the config file.
+- Output safety guards: a file whose output would equal its own input, and a second input that maps to an output another input already claimed (`a.wav` + `a.flac` -> `a.opus`), are skipped and reported instead of overwriting or double-converting.
 - `--version` prints `convopus <version>` instead of the interpreter and script path.
 - README troubleshooting table and exit-code reference.
 

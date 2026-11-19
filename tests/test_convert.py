@@ -162,21 +162,33 @@ def test_convert_file_direct_deletes_source_after_success(tmp_path, monkeypatch)
 
 
 def test_mt_worker_reports_failure_as_data():
-    def boom(_file_name):
+    def boom(_file_name, **_kwargs):
         raise ConversionError("ffmpeg said no")
 
-    def ok(_file_name):
+    def ok(_file_name, **_kwargs):
         return None
 
-    assert _mt_worker("a.wav", boom) == ("a.wav", "ffmpeg said no")
-    assert _mt_worker("b.wav", ok) == ("b.wav", None)
+    assert _mt_worker(("a.wav", "a.opus"), boom) == ("a.wav", "ffmpeg said no")
+    assert _mt_worker(("b.wav", "b.opus"), ok) == ("b.wav", None)
 
 
 def test_mt_worker_reports_oserror_as_data():
-    def boom(_file_name):
+    def boom(_file_name, **_kwargs):
         raise OSError("disk went away")
 
-    assert _mt_worker("a.wav", boom) == ("a.wav", "disk went away")
+    assert _mt_worker(("a.wav", "a.opus"), boom) == ("a.wav", "disk went away")
+
+
+def test_mt_worker_passes_the_planned_output():
+    seen = {}
+
+    def record(file_name, **kwargs):
+        seen["file_name"] = file_name
+        seen["output_file"] = kwargs["output_file"]
+
+    _mt_worker(("a.wav", "out/a.opus"), record)
+
+    assert seen == {"file_name": "a.wav", "output_file": "out/a.opus"}
 
 
 def test_convert_folder_continues_after_failure(tmp_path, monkeypatch, capsys):
@@ -273,11 +285,11 @@ class _FakePool:
         self.joined = False
         self.terminated = False
 
-    def imap_unordered(self, func, files):
+    def imap_unordered(self, func, items):
         if self.error is not None:
             raise self.error
-        for file_name in files:
-            yield file_name, self.results.get(file_name)
+        for item in items:
+            yield item[0], self.results.get(item[0])
 
     def close(self):
         self.closed = True
@@ -295,7 +307,9 @@ def test_convert_all_mt_aggregates_failures(monkeypatch):
     pool = _FakePool({"a.wav": "ffmpeg said no", "b.wav": None})
     monkeypatch.setattr(convert_mod, "Pool", lambda size: pool)
 
-    failures = convert_mod._convert_all_mt(lambda file_name: None, ["a.wav", "b.wav"])
+    failures = convert_mod._convert_all_mt(
+        lambda file_name: None, [("a.wav", "a.opus"), ("b.wav", "b.opus")]
+    )
 
     assert failures == [("a.wav", "ffmpeg said no")]
     assert pool.closed is True
@@ -310,7 +324,7 @@ def test_convert_all_mt_terminates_pool_on_interrupt(monkeypatch):
     monkeypatch.setattr(convert_mod, "Pool", lambda size: pool)
 
     with pytest.raises(KeyboardInterrupt):
-        convert_mod._convert_all_mt(lambda file_name: None, ["a.wav"])
+        convert_mod._convert_all_mt(lambda file_name: None, [("a.wav", "a.opus")])
 
     assert pool.terminated is True
     assert pool.joined is True
@@ -329,7 +343,7 @@ def test_convert_all_mt_uses_requested_jobs(monkeypatch):
 
     monkeypatch.setattr(convert_mod, "Pool", fake_pool)
 
-    convert_mod._convert_all_mt(lambda file_name: None, ["a.wav"], jobs=3)
+    convert_mod._convert_all_mt(lambda file_name: None, [("a.wav", "a.opus")], jobs=3)
 
     assert sizes == [3]
 
@@ -344,7 +358,7 @@ def test_convert_all_mt_defaults_to_cpu_count(monkeypatch):
         lambda size: sizes.append(size) or _FakePool(),
     )
 
-    convert_mod._convert_all_mt(lambda file_name: None, ["a.wav"])
+    convert_mod._convert_all_mt(lambda file_name: None, [("a.wav", "a.opus")])
 
     assert sizes == [convert_mod.cpu_count()]
 
@@ -353,8 +367,8 @@ def test_convert_folder_multiprocessing_branch(tmp_path, monkeypatch):
     (tmp_path / "a.wav").write_bytes(b"a")
     seen = {}
 
-    def fake_convert_all(convert_func, files, jobs=None, quiet=False):
-        seen["files"] = list(files)
+    def fake_convert_all(convert_func, items, jobs=None, quiet=False):
+        seen["items"] = list(items)
         return []
 
     monkeypatch.setattr("convopus.convert._convert_all_mt", fake_convert_all)
@@ -364,4 +378,219 @@ def test_convert_folder_multiprocessing_branch(tmp_path, monkeypatch):
     )
 
     assert failures == 0
-    assert [os.path.basename(f) for f in seen["files"]] == ["a.wav"]
+    assert [os.path.basename(f) for f, _ in seen["items"]] == ["a.wav"]
+
+
+def test_plan_conversions_is_identity_without_conflicts(tmp_path):
+    from convopus.convert import plan_conversions
+
+    song = tmp_path / "song.wav"
+    song.write_bytes(b"a")
+
+    conversions, skipped = plan_conversions(
+        [str(song)], ".opus", False, str(tmp_path), None, False
+    )
+
+    assert conversions == [(str(song), str(tmp_path / "song.opus"))]
+    assert skipped == []
+
+
+def test_plan_conversions_skips_output_equal_to_input(tmp_path):
+    """`-c wav` on a wav input must never overwrite the source."""
+    from convopus.convert import plan_conversions
+
+    song = tmp_path / "song.wav"
+    song.write_bytes(b"a")
+
+    conversions, skipped = plan_conversions(
+        [str(song)], ".wav", False, str(tmp_path), None, False
+    )
+
+    assert conversions == []
+    assert len(skipped) == 1
+    assert "would overwrite an input file" in skipped[0][1]
+
+
+def test_plan_conversions_never_overwrites_another_input(tmp_path):
+    """`-c wav` on a.flac + a.wav must not let a.flac replace a.wav."""
+    from convopus.convert import plan_conversions
+
+    wav = tmp_path / "a.wav"
+    flac = tmp_path / "a.flac"
+    wav.write_bytes(b"a")
+    flac.write_bytes(b"b")
+
+    conversions, skipped = plan_conversions(
+        [str(wav), str(flac)], ".wav", False, str(tmp_path), None, False
+    )
+
+    assert conversions == []
+    assert len(skipped) == 2
+    assert all("would overwrite an input file" in reason for _, reason in skipped)
+
+
+def test_plan_conversions_skips_existing_outputs_only_when_asked(tmp_path):
+    from convopus.convert import plan_conversions
+
+    song = tmp_path / "song.wav"
+    song.write_bytes(b"a")
+    (tmp_path / "song.opus").write_bytes(b"existing")
+
+    kept, skipped = plan_conversions(
+        [str(song)], ".opus", False, str(tmp_path), None, False
+    )
+    assert len(kept) == 1
+    assert skipped == []
+
+    conversions, skipped = plan_conversions(
+        [str(song)], ".opus", False, str(tmp_path), None, True
+    )
+    assert conversions == []
+    assert "already exists" in skipped[0][1]
+
+
+def test_plan_conversions_detects_output_collisions(tmp_path, capsys):
+    """`a.wav` and `a.flac` both map to `a.opus`; only one may win."""
+    from convopus.convert import plan_conversions, report_skipped
+
+    wav = tmp_path / "a.wav"
+    flac = tmp_path / "a.flac"
+    wav.write_bytes(b"a")
+    flac.write_bytes(b"b")
+
+    conversions, skipped = plan_conversions(
+        [str(wav), str(flac)], ".opus", False, str(tmp_path), None, False
+    )
+
+    assert len(conversions) == 1
+    assert len(skipped) == 1
+    assert "another input" in skipped[0][1]
+
+    report_skipped(skipped)
+    assert "Skipped 1 file:" in capsys.readouterr().out
+
+
+def test_plan_conversions_compares_paths_case_insensitively(tmp_path):
+    from convopus.convert import plan_conversions
+
+    song = tmp_path / "SONG.WAV"
+    song.write_bytes(b"a")
+
+    conversions, skipped = plan_conversions(
+        [str(song)], ".wav", False, str(tmp_path), None, False
+    )
+
+    assert conversions == []
+    assert len(skipped) == 1
+
+
+def test_report_skipped_describes_every_file(capsys):
+    from convopus.convert import report_skipped
+
+    report_skipped([("a.wav", "reason one"), ("b.wav", "reason two")])
+
+    out = capsys.readouterr().out
+    assert "Skipped 2 files:" in out
+    assert "a.wav: reason one" in out
+    assert "b.wav: reason two" in out
+
+
+def test_report_skipped_is_quiet_without_skips(capsys):
+    from convopus.convert import report_skipped
+
+    report_skipped([])
+
+    assert capsys.readouterr().out == ""
+
+
+def test_convert_folder_skip_existing_leaves_outputs_alone(
+    tmp_path, monkeypatch, capsys
+):
+    (tmp_path / "a.wav").write_bytes(b"a")
+    existing = tmp_path / "a.opus"
+    existing.write_bytes(b"kept")
+    monkeypatch.setattr(
+        "convopus.convert.convert_file",
+        lambda **kwargs: pytest.fail("existing output must not be converted"),
+    )
+
+    failures = convert_folder(
+        str(tmp_path),
+        "96k",
+        ".opus",
+        True,
+        "on",
+        [".wav"],
+        False,
+        False,
+        None,
+        False,
+        None,
+        False,
+        False,
+        True,
+    )
+
+    assert failures == 0
+    assert existing.read_bytes() == b"kept"
+    assert "already exists" in capsys.readouterr().out
+
+
+def test_convert_folder_overwrite_reaches_ffmpeg(tmp_path, monkeypatch):
+    (tmp_path / "a.wav").write_bytes(b"a")
+    seen = []
+
+    def fake_convert(file_name, **kwargs):
+        seen.append(kwargs["overwrite"])
+
+    monkeypatch.setattr("convopus.convert.convert_file", fake_convert)
+
+    convert_folder(
+        str(tmp_path),
+        "96k",
+        ".opus",
+        True,
+        "on",
+        [".wav"],
+        False,
+        False,
+        None,
+        False,
+        None,
+        False,
+        True,
+    )
+
+    assert seen == [True]
+
+
+def test_convert_file_passes_overwrite_flag_to_ffmpeg(tmp_path, monkeypatch):
+    song = tmp_path / "song.wav"
+    song.write_bytes(b"audio")
+    argv = []
+    monkeypatch.setattr(
+        "convopus.convert.ffpb.main",
+        lambda **kwargs: argv.extend(kwargs["argv"]) or 0,
+    )
+
+    convert_file(str(song), "96k", ".opus", True, "on", False, overwrite=True)
+
+    assert argv[0] == "-y"
+
+
+def test_convert_file_direct_passes_overwrite_flag_to_ffmpeg(tmp_path, monkeypatch):
+    from convopus.convert import _convert_file_direct
+
+    song = tmp_path / "song.wav"
+    song.write_bytes(b"audio")
+    commands = []
+    monkeypatch.setattr(
+        "convopus.convert.subprocess.run",
+        lambda command, **kwargs: (
+            commands.append(command) or SimpleNamespace(returncode=0)
+        ),
+    )
+
+    _convert_file_direct(str(song), "96k", ".opus", True, "on", False, overwrite=True)
+
+    assert commands[0][:2] == ["ffmpeg", "-y"]

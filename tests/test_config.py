@@ -57,13 +57,14 @@ def test_load_accepts_legacy_uppercase_keys(isolated_config):
     assert config.common_types == Config().common_types
 
 
-def test_load_fills_missing_keys_from_defaults(isolated_config):
+def test_load_fills_missing_keys_from_defaults(isolated_config, capsys):
     isolated_config.parent.mkdir(parents=True, exist_ok=True)
     isolated_config.write_text(json.dumps({"bitrate": "96k"}), encoding="utf-8")
     config = load()
     assert config.bitrate == "96k"
     assert config.container == Config().container
     assert config.keep is True
+    assert capsys.readouterr().err == ""
 
 
 def test_load_repairs_invalid_values_with_warning(isolated_config, capsys):
@@ -179,6 +180,18 @@ def test_from_mapping_coerces_boolean_forms():
     assert Config.from_mapping({"keep": "yes"}).keep is True
     assert Config.from_mapping({"multi_threading": "off"}).multi_threading is False
     assert Config.from_mapping({"recursive": "ON"}).recursive is True
+
+
+def test_from_mapping_reads_existing_file_policy():
+    assert Config.from_mapping({"OVERWRITE": True}).overwrite is True
+    assert Config.from_mapping({"skip_existing": "yes"}).skip_existing is True
+
+
+def test_both_existing_policies_collapse_to_overwrite(capsys):
+    config = Config.from_mapping({"overwrite": True, "skip_existing": True})
+    assert config.overwrite is True
+    assert config.skip_existing is False
+    assert "skipping is disabled" in capsys.readouterr().err
 
 
 def test_from_mapping_ignores_non_string_keys():

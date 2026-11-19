@@ -67,6 +67,8 @@ convopus -dk album/                    # delete originals after converting
 convopus -m -r biglibrary/             # convert in parallel
 convopus -j 4 -r biglibrary/           # cap the worker pool at 4 processes
 convopus -q -r cron/                   # no progress bars, for logs and scripts
+convopus -y -r music/                  # replace existing .opus files
+convopus --skip-existing -r music/     # leave already-converted files alone
 convopus --mp3 -k song.flac            # convert to MP3 instead of opus
 convopus a.flac b/ c.wav               # multiple inputs in one run
 ```
@@ -75,10 +77,12 @@ With `-o/--out DIRECTORY` converted files are written to that directory instead 
 
 Originals are only deleted (`-dk`) after a successful conversion. Files that fail (corrupt input, unwritable output, refused overwrite) are reported, skipped, and kept; any failure makes convopus exit with status 1 so scripts can detect it.
 
+By default ffmpeg asks before replacing an existing output file; `-y/--overwrite` replaces it without asking, and `--skip-existing` leaves files whose output is already present alone. Two inputs that would produce the same file (`a.wav` and `a.flac` -> `a.opus`) cannot both be converted: the first is converted and the other is skipped. An output that would replace any input file (for example `-c .wav` on `.wav` sources) is always skipped, so a source is never overwritten.
+
 ```
 usage: convopus [-h] [-r] [--mp3] [-c CONTAINER] [--vbr {on,off}] [-b BITRATE]
-                [-o DIRECTORY] [-j N] [-q] [-k | -dk] [-m | -nm] [--config]
-                [-v]
+                [-o DIRECTORY] [-j N] [-q] [-y | --skip-existing] [-k | -dk]
+                [-m | -nm] [--config] [-v]
                 [input ...]
 
 A Python CLI program for converting audio files to opus
@@ -117,6 +121,10 @@ Conversion Options:
                         default: CPU count) (default: None)
   -q, --quiet           No progress bars (useful in logs and scripts)
                         (default: False)
+  -y, --overwrite       Replace existing output files without asking (default:
+                        False)
+  --skip-existing       Skip files whose output already exists (default:
+                        False)
 ```
 
 ## Troubleshooting
@@ -124,7 +132,7 @@ Conversion Options:
 | Symptom | Fix |
 |---|---|
 | `Error: ffmpeg is not installed...` | Install it with the table above, then restart the shell so `PATH` is picked up; verify with `ffmpeg -version` |
-| `File ... already exists. Overwrite? [y/N]` | ffmpeg asks before replacing an output. Answer interactively, or write into a separate tree with `--out` |
+| `File ... already exists. Overwrite? [y/N]` | ffmpeg asks before replacing an output. Answer interactively, pass `-y/--overwrite`, or use `--skip-existing` to leave those files alone |
 | Progress bars flood a log file | Add `-q/--quiet` |
 | A folder conversion stops on one bad file | It should not: failures are reported, the file is kept, and the rest of the batch continues |
 | The run exits 1 | At least one file failed or an input path was invalid; the per-file reasons are printed on stderr |
@@ -153,7 +161,9 @@ The default config:
     "vbr": "on",
     "recursive": false,
     "multi_threading": true,
-    "common_types": [".flac", ".mp3", ".wav", ".m4a", ".aac", ".webm", ".mp4", ".avi", ".mkv", ".mpc", ".wma"]
+    "common_types": [".flac", ".mp3", ".wav", ".m4a", ".aac", ".webm", ".mp4", ".avi", ".mkv", ".mpc", ".wma"],
+    "overwrite": false,
+    "skip_existing": false
 }
 ```
 
@@ -166,6 +176,10 @@ The default config:
 |recursive|Convert subdirectories too (command-line `-r` overrides this)|
 |multi_threading|Convert in parallel (command-line `-m`/`-nm` override this)|
 |common_types|File extensions that get converted|
+|overwrite|Replace existing outputs without asking (command-line `-y` overrides this)|
+|skip_existing|Skip files whose output already exists (command-line `--skip-existing` overrides this)|
+
+`overwrite` and `skip_existing` cannot both be true; if a config sets both, `skip_existing` is disabled with a warning.
 
 Keys are matched case-insensitively - configs written by older convopus versions keep working. Missing or invalid values fall back to defaults with a warning instead of failing, so a broken config never stops the CLI from running.
 
