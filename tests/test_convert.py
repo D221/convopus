@@ -130,7 +130,7 @@ def test_convert_file_keeps_source_when_ffmpeg_is_missing(tmp_path, monkeypatch)
     assert song.exists()
 
 
-def test_convert_file_mt_keeps_source_when_ffmpeg_fails(tmp_path, monkeypatch):
+def test_convert_file_direct_keeps_source_when_ffmpeg_fails(tmp_path, monkeypatch):
     song = tmp_path / "song.wav"
     song.write_bytes(b"not really audio")
     monkeypatch.setattr(
@@ -138,16 +138,16 @@ def test_convert_file_mt_keeps_source_when_ffmpeg_fails(tmp_path, monkeypatch):
         lambda *args, **kwargs: SimpleNamespace(returncode=1),
     )
 
-    from convopus.convert import _convert_file_mt
+    from convopus.convert import _convert_file_direct
 
     with pytest.raises(ConversionError):
-        _convert_file_mt(str(song), "96k", ".opus", False, "on", False)
+        _convert_file_direct(str(song), "96k", ".opus", False, "on", False)
 
     assert song.exists()
 
 
-def test_convert_file_mt_deletes_source_after_success(tmp_path, monkeypatch):
-    from convopus.convert import _convert_file_mt
+def test_convert_file_direct_deletes_source_after_success(tmp_path, monkeypatch):
+    from convopus.convert import _convert_file_direct
 
     song = tmp_path / "song.wav"
     song.write_bytes(b"audio")
@@ -156,7 +156,7 @@ def test_convert_file_mt_deletes_source_after_success(tmp_path, monkeypatch):
         lambda *args, **kwargs: SimpleNamespace(returncode=0),
     )
 
-    _convert_file_mt(str(song), "96k", ".opus", False, "on", False)
+    _convert_file_direct(str(song), "96k", ".opus", False, "on", False)
 
     assert not song.exists()
 
@@ -197,7 +197,7 @@ def test_convert_folder_continues_after_failure(tmp_path, monkeypatch, capsys):
 
     assert failures == 1
     assert attempted == ["a.wav", "b.wav"]
-    assert "1 file(s) failed" in capsys.readouterr().err
+    assert "1 file failed to convert" in capsys.readouterr().err
 
 
 def test_convert_folder_reports_no_files(tmp_path, capsys):
@@ -207,6 +207,54 @@ def test_convert_folder_reports_no_files(tmp_path, capsys):
 
     assert failures == 0
     assert "No files to convert" in capsys.readouterr().out
+
+
+def test_convert_folder_reports_plural_failures(tmp_path, monkeypatch, capsys):
+    (tmp_path / "a.wav").write_bytes(b"a")
+    (tmp_path / "b.wav").write_bytes(b"b")
+
+    def boom(**kwargs):
+        raise ConversionError("ffmpeg said no")
+
+    monkeypatch.setattr("convopus.convert.convert_file", boom)
+
+    failures = convert_folder(
+        str(tmp_path), "96k", ".opus", True, "on", [".wav"], False, False
+    )
+
+    assert failures == 2
+    assert "2 files failed to convert" in capsys.readouterr().err
+
+
+def test_convert_folder_quiet_uses_direct_runner(tmp_path, monkeypatch):
+    (tmp_path / "a.wav").write_bytes(b"a")
+    seen = []
+    monkeypatch.setattr(
+        "convopus.convert.convert_file",
+        lambda **kwargs: pytest.fail("ffpb runner used in quiet mode"),
+    )
+    monkeypatch.setattr(
+        "convopus.convert._convert_file_direct",
+        lambda **kwargs: seen.append(kwargs["file_name"]),
+    )
+
+    failures = convert_folder(
+        str(tmp_path),
+        "96k",
+        ".opus",
+        True,
+        "on",
+        [".wav"],
+        False,
+        False,
+        None,
+        False,
+        None,
+        True,
+    )
+
+    assert failures == 0
+    assert [os.path.basename(f) for f in seen] == ["a.wav"]
 
 
 def test_signal_handler_exits_with_128_plus_signal():
@@ -269,11 +317,43 @@ def test_convert_all_mt_terminates_pool_on_interrupt(monkeypatch):
     assert pool.closed is False
 
 
+def test_convert_all_mt_uses_requested_jobs(monkeypatch):
+    from convopus import convert as convert_mod
+
+    sizes = []
+    pool = _FakePool()
+
+    def fake_pool(size):
+        sizes.append(size)
+        return pool
+
+    monkeypatch.setattr(convert_mod, "Pool", fake_pool)
+
+    convert_mod._convert_all_mt(lambda file_name: None, ["a.wav"], jobs=3)
+
+    assert sizes == [3]
+
+
+def test_convert_all_mt_defaults_to_cpu_count(monkeypatch):
+    from convopus import convert as convert_mod
+
+    sizes = []
+    monkeypatch.setattr(
+        convert_mod,
+        "Pool",
+        lambda size: sizes.append(size) or _FakePool(),
+    )
+
+    convert_mod._convert_all_mt(lambda file_name: None, ["a.wav"])
+
+    assert sizes == [convert_mod.cpu_count()]
+
+
 def test_convert_folder_multiprocessing_branch(tmp_path, monkeypatch):
     (tmp_path / "a.wav").write_bytes(b"a")
     seen = {}
 
-    def fake_convert_all(convert_func, files):
+    def fake_convert_all(convert_func, files, jobs=None, quiet=False):
         seen["files"] = list(files)
         return []
 

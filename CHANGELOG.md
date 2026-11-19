@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `-j/--jobs N` caps the multiprocessing pool (and implies `-m`); `-q/--quiet` disables progress bars for logs and scripts.
+- `--version` prints `convopus <version>` instead of the interpreter and script path.
+- README troubleshooting table and exit-code reference.
+
+### Fixed
+
+- The failure summary uses correct grammar (`1 file failed`, not `1 file(s) failed`).
+
 ## [1.6.1] - 2026-11-19
 
 ### Fixed

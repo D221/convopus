@@ -46,10 +46,22 @@ def _bitrate(value: str) -> str:
     return bitrate
 
 
+def _positive_int(value: str) -> int:
+    """Parse a worker count; anything below 1 is rejected."""
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{value!r} is not an integer") from None
+    if number < 1:
+        raise argparse.ArgumentTypeError("must be 1 or greater")
+    return number
+
+
 def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
     """Function to parse command-line arguments"""
     # If user needs to view config file, just print and exit gracefully
     parser = argparse.ArgumentParser(
+        prog="convopus",
         description="A Python CLI program for converting audio files to opus",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -98,6 +110,20 @@ def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
         help="Output directory for converted files (input structure is mirrored under it)",
         default=None,
     )
+    group.add_argument(
+        "-j",
+        "--jobs",
+        metavar="N",
+        type=_positive_int,
+        default=None,
+        help="Worker processes for multithreading (implies -m; default: CPU count)",
+    )
+    group.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="No progress bars (useful in logs and scripts)",
+    )
 
     action_group_keep = parser.add_mutually_exclusive_group(required=False)
     action_group_keep.add_argument(
@@ -138,6 +164,8 @@ def parse_arguments(argv: Sequence[str], config: Config) -> argparse.Namespace:
     )
 
     args = parser.parse_args(args=argv)
+    if args.jobs is not None and args.no_multithreading:
+        parser.error("--jobs cannot be combined with --no-multithreading")
     if args.print_config:
         print_config()  # prints and exits, never returns
     return args
@@ -154,6 +182,8 @@ def convert(
     multi_threading: bool,
     mp3: bool,
     out_dir: str | None,
+    jobs: int | None = None,
+    quiet: bool = False,
 ) -> int:
     """Function that converts audio files into opus format.
 
@@ -174,6 +204,8 @@ def convert(
                 mp3,
                 out_dir,
                 multi_threading,
+                jobs,
+                quiet,
             )
         elif os.path.isfile(input_path):
             try:
@@ -223,6 +255,9 @@ def main() -> None:
     # If no flag is specified for multi_threading, use default value from config file
     if multi_threading is None:
         multi_threading = config.multi_threading
+    # --jobs only makes sense with a pool, so it implies -m
+    if args.jobs is not None:
+        multi_threading = True
 
     if args.input:
         failures = convert(
@@ -236,6 +271,8 @@ def main() -> None:
             multi_threading,
             args.mp3,
             args.out,
+            args.jobs,
+            args.quiet,
         )
         if failures:
             raise SystemExit(1)

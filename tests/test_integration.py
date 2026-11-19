@@ -145,7 +145,7 @@ def test_cli_exits_nonzero_and_continues_after_failure(tmp_path, make_wav):
     assert result.returncode == 1, result.stderr
     assert (tmp_path / "corrupt.wav").is_file()
     assert (tmp_path / "good.opus").is_file()
-    assert "file(s) failed to convert" in result.stderr
+    assert "1 file failed to convert" in result.stderr
 
 
 def test_cli_multiprocessing_keeps_failing_original(tmp_path, make_wav):

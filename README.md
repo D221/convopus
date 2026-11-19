@@ -65,6 +65,8 @@ convopus -r music/                     # include subdirectories
 convopus -r --out converted/ music/    # write results to converted/, originals untouched
 convopus -dk album/                    # delete originals after converting
 convopus -m -r biglibrary/             # convert in parallel
+convopus -j 4 -r biglibrary/           # cap the worker pool at 4 processes
+convopus -q -r cron/                   # no progress bars, for logs and scripts
 convopus --mp3 -k song.flac            # convert to MP3 instead of opus
 convopus a.flac b/ c.wav               # multiple inputs in one run
 ```
@@ -75,7 +77,8 @@ Originals are only deleted (`-dk`) after a successful conversion. Files that fai
 
 ```
 usage: convopus [-h] [-r] [--mp3] [-c CONTAINER] [--vbr {on,off}] [-b BITRATE]
-                [-o DIRECTORY] [-k | -dk] [-m | -nm] [--config] [-v]
+                [-o DIRECTORY] [-j N] [-q] [-k | -dk] [-m | -nm] [--config]
+                [-v]
                 [input ...]
 
 A Python CLI program for converting audio files to opus
@@ -102,16 +105,31 @@ Conversion Options:
   -r, --recursive       Also convert files in subdirectories (default: False)
   --mp3                 Convert to mp3 instead - 320 or V0 depending on VBR
                         (default: False)
-  -c CONTAINER, --container CONTAINER
+  -c, --container CONTAINER
                         Container for audio files (.ogg, .opus, .oga, .mkv,
                         .webm) (default: .opus)
   --vbr {on,off}        Variable Bitrate option (default: on)
-  -b BITRATE, --bitrate BITRATE
+  -b, --bitrate BITRATE
                         Preferred bitrate for audio files (default: 128k)
-  -o DIRECTORY, --out DIRECTORY
-                        Output directory for converted files (input structure
+  -o, --out DIRECTORY   Output directory for converted files (input structure
                         is mirrored under it) (default: None)
+  -j, --jobs N          Worker processes for multithreading (implies -m;
+                        default: CPU count) (default: None)
+  -q, --quiet           No progress bars (useful in logs and scripts)
+                        (default: False)
 ```
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `Error: ffmpeg is not installed...` | Install it with the table above, then restart the shell so `PATH` is picked up; verify with `ffmpeg -version` |
+| `File ... already exists. Overwrite? [y/N]` | ffmpeg asks before replacing an output. Answer interactively, or write into a separate tree with `--out` |
+| Progress bars flood a log file | Add `-q/--quiet` |
+| A folder conversion stops on one bad file | It should not: failures are reported, the file is kept, and the rest of the batch continues |
+| The run exits 1 | At least one file failed or an input path was invalid; the per-file reasons are printed on stderr |
+
+Exit codes: `0` success, `1` conversion or input failure (or missing ffmpeg), `2` invalid arguments, `130` interrupted with Ctrl-C.
 
 ## Configuration
 

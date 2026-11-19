@@ -54,7 +54,7 @@ def _collect_files(
     ]
 
 
-def _total_progress_bar(total: int) -> tqdm:
+def _total_progress_bar(total: int, disabled: bool = False) -> tqdm:
     """Create the shared total progress bar."""
     return tqdm(
         total=total,
@@ -63,6 +63,7 @@ def _total_progress_bar(total: int) -> tqdm:
         ncols=0,
         colour="green",
         bar_format="{desc} {percentage:3.0f}%|{bar}|[{elapsed}{postfix}]",
+        disable=disabled,
     )
 
 
@@ -133,7 +134,7 @@ def convert_file(
         os.remove(file_name)
 
 
-def _convert_file_mt(
+def _convert_file_direct(
     file_name: str,
     prefered_bitrate: str,
     file_container: str,
@@ -143,7 +144,7 @@ def _convert_file_mt(
     input_root: str | None = None,
     output_dir: str | None = None,
 ) -> None:
-    """For converting a single audio file in a worker process.
+    """Convert one file with subprocess (pool worker or --quiet sequential).
 
     Same contract as convert_file: raise on failure and keep the original.
     """
@@ -180,13 +181,16 @@ def _mt_worker(
 
 
 def _convert_all_mt(
-    convert_func: Callable[[str], None], files: Sequence[str]
+    convert_func: Callable[[str], None],
+    files: Sequence[str],
+    jobs: int | None = None,
+    quiet: bool = False,
 ) -> list[tuple[str, str]]:
     """Convert files in a process pool, returning (file, error) failures."""
     failures: list[tuple[str, str]] = []
-    pool = Pool(cpu_count())
+    pool = Pool(jobs or cpu_count())
     try:
-        with _total_progress_bar(len(files)) as pbar:
+        with _total_progress_bar(len(files), disabled=quiet) as pbar:
             for file_name, error in pool.imap_unordered(
                 partial(_mt_worker, convert_func=convert_func), files
             ):
@@ -207,7 +211,8 @@ def _report_failures(failures: Sequence[tuple[str, str]]) -> None:
     """Print one line per failed file on stderr."""
     if not failures:
         return
-    print(f"{len(failures)} file(s) failed to convert:", file=sys.stderr)
+    noun = "file" if len(failures) == 1 else "files"
+    print(f"{len(failures)} {noun} failed to convert:", file=sys.stderr)
     for file_name, message in failures:
         print(f"  {file_name}: {message}", file=sys.stderr)
 
@@ -223,11 +228,15 @@ def convert_folder(
     mp3: bool,
     output_dir: str | None = None,
     multi_threading: bool = False,
+    jobs: int | None = None,
+    quiet: bool = False,
 ) -> int:
     """For converting audio files in a folder.
 
     Returns the number of files that failed to convert. Failures do not stop
     the batch, and originals are only deleted after a successful conversion.
+    `quiet` replaces the per-file ffpb bars with the direct ffmpeg runner and
+    disables the total bar; `jobs` caps the worker pool.
     """
     files_to_convert = filter_out_dir_files(
         _collect_files(input_path, config_common_types, recursive), output_dir
@@ -241,7 +250,7 @@ def convert_folder(
     failures: list[tuple[str, str]] = []
     if multi_threading:
         convert_func = partial(
-            _convert_file_mt,
+            _convert_file_direct,
             prefered_bitrate=prefered_bitrate,
             file_container=file_container,
             keep_files=keep_files,
@@ -250,12 +259,13 @@ def convert_folder(
             input_root=input_path,
             output_dir=output_dir,
         )
-        failures = _convert_all_mt(convert_func, sorted(files_to_convert))
+        failures = _convert_all_mt(convert_func, sorted(files_to_convert), jobs, quiet)
     else:
-        with _total_progress_bar(len(files_to_convert)) as pbar:
+        convert_func = _convert_file_direct if quiet else convert_file
+        with _total_progress_bar(len(files_to_convert), disabled=quiet) as pbar:
             for idx, input_file in enumerate(sorted(files_to_convert)):
                 try:
-                    convert_file(
+                    convert_func(
                         file_name=input_file,
                         prefered_bitrate=prefered_bitrate,
                         file_container=file_container,

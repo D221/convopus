@@ -77,6 +77,36 @@ def test_version_exits_with_version_string(capsys):
     assert __version__ in capsys.readouterr().out
 
 
+def test_version_prints_short_program_name(capsys):
+    from convopus import __version__
+
+    with pytest.raises(SystemExit):
+        parse_arguments(["-v"], Config())
+    assert capsys.readouterr().out.strip() == f"convopus {__version__}"
+
+
+def test_jobs_is_parsed():
+    args = parse_arguments(["-j", "4", "music/"], Config())
+    assert args.jobs == 4
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "many"])
+def test_jobs_must_be_a_positive_integer(value):
+    with pytest.raises(SystemExit) as excinfo:
+        parse_arguments(["-j", value, "music/"], Config())
+    assert excinfo.value.code == 2
+
+
+def test_jobs_conflicts_with_no_multithreading():
+    with pytest.raises(SystemExit) as excinfo:
+        parse_arguments(["-nm", "-j", "2", "music/"], Config())
+    assert excinfo.value.code == 2
+
+
+def test_quiet_is_parsed():
+    assert parse_arguments(["-q", "music/"], Config()).quiet is True
+
+
 def test_print_config_prints_location_and_content(capsys, isolated_config):
     isolated_config.parent.mkdir(parents=True, exist_ok=True)
     isolated_config.write_text(json.dumps({"bitrate": "96k"}), encoding="utf-8")
@@ -193,6 +223,19 @@ def test_main_multithreading_flag_overrides_config(monkeypatch):
 def test_main_no_multithreading_flag_overrides_config(monkeypatch):
     args = _run_main(monkeypatch, ["-nm", "song.wav"], Config(multi_threading=True))
     assert args[7] is False
+
+
+def test_main_jobs_implies_multithreading(monkeypatch):
+    args = _run_main(
+        monkeypatch, ["-j", "3", "song.wav"], Config(multi_threading=False)
+    )
+    assert args[7] is True
+    assert args[10] == 3
+
+
+def test_main_passes_quiet(monkeypatch):
+    args = _run_main(monkeypatch, ["-q", "song.wav"], Config())
+    assert args[11] is True
 
 
 def test_main_without_input_prints_usage_hint(monkeypatch, capsys):
